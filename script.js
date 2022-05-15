@@ -153,6 +153,7 @@ class Simulation {
 
     this.next = this.next.bind(this);
     this.previousTime = -1;
+    this.updateRollover = 0;
 
     window.addEventListener('resize', () => {
       this.updateCanvasSize();
@@ -232,8 +233,11 @@ class Simulation {
     deltaTimeMS = clamp(deltaTimeMS, 0, 100);
     const deltaTimeSeconds = deltaTimeMS / 1000;
 
-    const stepsToPerform = deltaTimeSeconds * TIME_STEPS_PER_SECOND;
-    for (let i = 0; i < stepsToPerform; i++) {
+    // If we calculate that we have to run something like "7.5 steps", we'll carry the 0.5 over to the next
+    // step so that if we get another "7.5 steps", we'll do 7 + 8 = 15 steps instead of 7 + 7 = 14 steps.
+    const stepsToPerform = deltaTimeSeconds * TIME_STEPS_PER_SECOND + this.updateRollover;
+    this.updateRollover = stepsToPerform % 1;
+    for (let i = 0; i < Math.floor(stepsToPerform); i++) {
       this.update();
     }
 
