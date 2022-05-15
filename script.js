@@ -65,8 +65,8 @@ class PointMass {
     /** @type {Vector} velocity in meters/second */
     this.velocity = new Vector();
 
-    /** @type {Vector} acceleration in meters/second/second */
-    this.acceleration = new Vector();
+    /** @type {Vector} Net force in Newtons */
+    this.netForce = new Vector();
 
     /** @type {number} radius in meters */
     this.radius = 10;
@@ -83,43 +83,17 @@ class PointMass {
     return object;
   }
 
-  updateForces (simulation) {
-    let totalForceX = 0;
-    let totalForceY = 0;
-
-    for (let i = 0; i < simulation.objects.length; i++) {
-      const object = simulation.objects[i];
-      if (object === this) continue;
-
-      const distance = this.position.distanceTo(object.position);
-
-      // Universal gravitational field strength
-      // Fg = G * m1 * m2 / r^2
-      const magnitude = G * this.mass * object.mass / (distance ** 2);
-
-      // We have two similar right triangles:
-      // 1) Hypotenuse = distance between points, legs = displacement between points
-      // 2) Hypotenuse = force, legs = components of force
-      // These equations were found using proportions
-      const forceX = (object.position.x - this.position.x) * magnitude / distance;
-      const forceY = (object.position.y - this.position.y) * magnitude / distance;
-
-      totalForceX += forceX;
-      totalForceY += forceY;
-    }
-
-    // Acceleration = Force / Mass
-    this.acceleration.x = totalForceX / this.mass;
-    this.acceleration.y = totalForceY / this.mass;
-  }
-
   /** @param {Simulation} simulation */
-  update (simulation) {
+  update() {
     // Repeated addition of many small time slices approximates an integral
 
+    // Acceleration = Force / Mass
+    const accelerationX = this.netForce.x / this.mass;
+    const accelerationY = this.netForce.y / this.mass;
+
     // Integrate acceleration to find velocity
-    this.velocity.x += this.acceleration.x * TIME_STEP;
-    this.velocity.y += this.acceleration.y * TIME_STEP;
+    this.velocity.x += accelerationX * TIME_STEP;
+    this.velocity.y += accelerationY * TIME_STEP;
 
     // Integrate position to find position
     this.position.x += this.velocity.x * TIME_STEP;
@@ -295,11 +269,41 @@ class Simulation {
   }
 
   update () {
+    // Reset the force vector of each object. Forces are recalculated on every update.
     for (let i = 0; i < this.objects.length; i++) {
-      this.objects[i].updateForces(this);
+      const object = this.objects[i];
+      object.netForce.x = 0;
+      object.netForce.y = 0;
     }
     for (let i = 0; i < this.objects.length; i++) {
-      this.objects[i].update(this);
+      const objectA = this.objects[i];
+      for (let j = i + 1; j < this.objects.length; j++) {
+        const objectB = this.objects[j];
+
+        const distance = objectA.position.distanceTo(objectB.position);
+
+        // Universal gravitational field strength
+        // Fg = G * m1 * m2 / r^2
+        const magnitude = G * objectA.mass * objectB.mass / (distance ** 2);
+  
+        // We have two similar right triangles:
+        // 1) Hypotenuse = distance between points, legs = displacement between points
+        // 2) Hypotenuse = force, legs = components of force
+        // These equations were found using proportions
+        const forceX = (objectB.position.x - objectA.position.x) * magnitude / distance;
+        const forceY = (objectB.position.y - objectA.position.y) * magnitude / distance;
+  
+        objectA.netForce.x += forceX;
+        objectA.netForce.y += forceY;
+        // Newton's third law
+        objectB.netForce.x -= forceX;
+        objectB.netForce.y -= forceY;
+      }
+    }
+
+    for (let i = 0; i < this.objects.length; i++) {
+      const object = this.objects[i];
+      object.update();
     }
   }
 
