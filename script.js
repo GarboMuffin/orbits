@@ -26,6 +26,19 @@ class Vector {
   }
 }
 
+class Rectangle {
+  constructor(x, y, width, height) {
+    /** @type {number} x coordinate of top left corner */
+    this.x = x;
+    /** @type {number} y coordinate of top left corner */
+    this.y = y;
+    /** @type {number} width in the +x direction */
+    this.width = width;
+    /** @type {number} height in the +y direction */
+    this.height = height;
+  }
+}
+
 class Energy {
   constructor () {
     /** @type {number} Kinetic energy in joules */
@@ -166,34 +179,22 @@ class Simulation {
       e.preventDefault();
       const mouseup = (e) => {
         e.preventDefault();
-        cleanup();
+        window.removeEventListener('mouseup', mouseup);
+        window.removeEventListener('mousemove', mousemove);
       };
       const mousemove = (e) => {
         e.preventDefault();
-        this.center.x += e.movementX / this.zoom;
-        this.center.y += e.movementY / this.zoom;
+        this.panBy(e.movementX, e.movementY);
       };
-      const cleanup = () => {
-        document.removeEventListener('mouseup', mouseup);
-        document.removeEventListener('mousemove', mousemove);
-      };
-      document.addEventListener('mouseup', mouseup);
-      document.addEventListener('mousemove', mousemove);
+      window.addEventListener('mouseup', mouseup);
+      window.addEventListener('mousemove', mousemove);
     });
     // document.addEventListener('mousemove', (e) => {
-    //   console.log(this.getPointAtScreenPoint(e.clientX, e.clientY))
-    // })
+    //   console.log(this.getSimulationPointAtScreenPoint(e.clientX, e.clientY))
+    // });
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-
-      const deltaY = -e.deltaY * 0.01;
-      let newZoom = this.zoom * (2 ** deltaY);
-      const MIN_ZOOM = 0.000001;
-      if (newZoom < MIN_ZOOM) {
-        newZoom = MIN_ZOOM;
-      }
-
-      this.zoom = newZoom;
+      this.zoomBy(e.deltaY, e.clientX, e.clientY);
     });
 
     this.objects = [];
@@ -202,22 +203,55 @@ class Simulation {
   updateCanvasSize() {
     this.baseWidth = this.canvas.offsetWidth;
     this.baseHeight = this.canvas.offsetHeight;
+    this.rect = this.canvas.getBoundingClientRect();
     this.pixelRatio = window.devicePixelRatio;
     this.canvas.width = this.baseWidth * this.pixelRatio;
     this.canvas.height = this.baseHeight * this.pixelRatio;
-    this.rect = this.canvas.getBoundingClientRect();
   }
 
-  getPointAtScreenPoint(clientX, clientY) {
+  panBy(screenMovementX, screenMovementY) {
+    this.center.x -= screenMovementX / this.zoom;
+    this.center.y -= screenMovementY / this.zoom;
+  }
+
+  zoomBy(deltaY, screenX, screenY) {
+    const point = this.getSimulationPointAtScreenPoint(screenX, screenY);
+    const screenDistanceToLeftEdge = screenX - this.rect.left;
+    const screenDistanceToTop = screenY - this.rect.top;
+
+    const MIN_ZOOM = 0.000001;
+    const ZOOM_SPEED = 0.01;
+    const zoomAmount = -deltaY * ZOOM_SPEED;
+    this.zoom = clamp(this.zoom * (2 ** zoomAmount), MIN_ZOOM, Infinity);
+
+    const newViewport = this.getSimulationViewport();
+    const newSimulationLeftEdge = point.x - (screenDistanceToLeftEdge / this.zoom);
+    const newSimulationTop = point.y - (screenDistanceToTop / this.zoom);
+    this.center.x = newSimulationLeftEdge + (newViewport.width / 2);
+    this.center.y = newSimulationTop + (newViewport.height / 2);
+  }
+
+  getSimulationPointAtScreenPoint(clientX, clientY) {
     // These coordinates are all in "screen space"
     const canvasX = clientX - this.rect.left;
     const canvasY = clientY - this.rect.top;
-    const fromCenterX = canvasX - (this.rect.width / 2);
-    const fromCenterY = canvasY - (this.rect.height / 2);
+    const fromCenterX = canvasX - (this.baseWidth / 2);
+    const fromCenterY = canvasY - (this.baseHeight / 2);
     // Convert to "simulation space"
     return new Vector(
-      this.center.x + fromCenterX / this.zoom,
-      this.center.y + fromCenterY / this.zoom
+      this.center.x + (fromCenterX / this.zoom),
+      this.center.y + (fromCenterY / this.zoom)
+    );
+  }
+
+  getSimulationViewport() {
+    const viewportWidth = this.baseWidth / this.zoom;
+    const viewportHeight = this.baseHeight / this.zoom;
+    return new Rectangle(
+      this.center.x - (viewportWidth / 2),
+      this.center.y - (viewportHeight / 2),
+      viewportWidth,
+      viewportHeight
     );
   }
 
@@ -286,7 +320,7 @@ class Simulation {
     this.ctx.scale(this.zoom, this.zoom);
 
     // Apply user pan
-    this.ctx.translate(this.center.x, this.center.y);
+    this.ctx.translate(-this.center.x, -this.center.y);
 
     for (const object of this.objects) {
       object.render(this);
