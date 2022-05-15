@@ -44,7 +44,7 @@ class Energy {
 class PointMass {
   constructor () {
     /** @type {number} mass in kilograms */
-    this.mass = 0;
+    this.mass = 1;
 
     /** @type {Vector} position in meters */
     this.position = new Vector();
