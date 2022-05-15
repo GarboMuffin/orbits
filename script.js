@@ -78,14 +78,18 @@ class PointMass {
       if (object === this) continue;
       const distance = this.position.distanceTo(object.position);
 
-      // Universal gravitation
+      // Universal gravitational field strength
       // Fg = G * m1 * m2 / r^2
       const magnitude = G * this.mass * object.mass / (distance ** 2);
 
+      // We have two similar right triangles:
+      // 1) Hypotenuse = distance between points, legs = displacement between points
+      // 2) Hypotenuse = force, legs = components of force
+      // These equations were found using proportions
       const forceX = (object.position.x - this.position.x) * magnitude / distance;
       const forceY = (object.position.y - this.position.y) * magnitude / distance;
 
-      // Force = Mass * Acceleration
+      // Acceleration = Force / Mass
       this.acceleration.x += forceX / this.mass;
       this.acceleration.y += forceY / this.mass;
     }
@@ -93,11 +97,15 @@ class PointMass {
 
   /** @param {Simulation} simulation */
   update (simulation) {
-    this.velocity.x += this.acceleration.x * simulation.timeStep;
-    this.velocity.y += this.acceleration.y * simulation.timeStep;
+    // Repeated addition of many small time slices approximates an integral
 
-    this.position.x += this.velocity.x * simulation.timeStep;
-    this.position.y += this.velocity.y * simulation.timeStep;
+    // Integrate acceleration to find velocity
+    this.velocity.x += this.acceleration.x * TIME_STEP;
+    this.velocity.y += this.acceleration.y * TIME_STEP;
+
+    // Integrate position to find position
+    this.position.x += this.velocity.x * TIME_STEP;
+    this.position.y += this.velocity.y * TIME_STEP;
   }
 
   /** @param {Simulation} simulation */
@@ -188,7 +196,6 @@ class Simulation {
     });
 
     this.objects = [];
-    this.timeStep = TIME_STEP;
   }
 
   updateCanvasSize() {
@@ -201,11 +208,15 @@ class Simulation {
   }
 
   getPointAtScreenPoint(clientX, clientY) {
+    // These coordinates are all in "screen space"
     const canvasX = clientX - this.rect.left;
     const canvasY = clientY - this.rect.top;
+    const fromCenterX = canvasX - (this.rect.width / 2);
+    const fromCenterY = canvasY - (this.rect.height / 2);
+    // Convert to "simulation space"
     return new Vector(
-      this.center.x + (canvasX - (this.rect.width / 2)) / this.zoom,
-      this.center.y + (canvasY - (this.rect.height / 2)) / this.zoom
+      this.center.x + fromCenterX / this.zoom,
+      this.center.y + fromCenterY / this.zoom
     );
   }
 
