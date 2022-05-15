@@ -1,52 +1,28 @@
-// Seconds of real physics per millisecond of simulated physics
-const TIME_STEP = 0.01;
-const TIME_STEPS_PER_UPDATE = 10000;
+// In seconds
+const TIME_STEP = 1;
+const TIME_STEPS_PER_SECOND = 10000;
 
+// Gravitational constant
 const G = 6.674e-11;
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
 class Vector {
-  constructor() {
-    this.x = 0;
-    this.y = 0;
-  }
-
-  /**
-   * @param {number} magnitude 
-   * @param {number} angle angle in radians
-   * @returns {Vector}
-   */
-  static fromAngle(magnitude, angle) {
-    const vector = new Vector();
-    vector.x = magnitude * Math.cos(angle);
-    vector.y = magnitude * Math.sin(angle);
-    return vector;
-  }
-
-  /** @param {Vector} otherVector */
-  distanceTo(otherVector) {
-    return Math.sqrt((this.x - otherVector.x) ** 2 + (this.y - otherVector.y) ** 2);
+  constructor(x=0, y=0) {
+    this.x = x;
+    this.y = y;
   }
 
   /**
    * @param {Vector} otherVector
-   * @returns {number} angle in radians
+   * @returns {number} distance in meters
    */
-  angleTo(otherVector) {
-    return Math.atan2(otherVector.x - this.x, otherVector.y - this.y);
+  distanceTo(otherVector) {
+    return Math.sqrt((this.x - otherVector.x) ** 2 + (this.y - otherVector.y) ** 2);
   }
 
   magnitude() {
     return Math.sqrt(this.x ** 2 + this.y ** 2);
-  }
-
-  addInPlace(otherVector) {
-    this.x += otherVector.x;
-    this.y += otherVector.y;
-  }
-
-  scalarDivideInPlace(k) {
-    this.x /= k;
-    this.y /= k;
   }
 }
 
@@ -57,6 +33,11 @@ class Energy {
 
     /** @type {number} Gravitational potential energy in joules */
     this.gravitational = 0;
+  }
+
+  /** @returns {number} Total energy in joules */
+  total() {
+    return this.kinetic + this.gravitational;
   }
 }
 
@@ -76,6 +57,17 @@ class PointMass {
 
     /** @type {number} radius in meters */
     this.radius = 10;
+  }
+
+  static from(mass, radius, x, y, vx, vy) {
+    const object = new PointMass();
+    object.mass = mass;
+    object.radius = radius;
+    object.position.x = x;
+    object.position.y = y;
+    object.velocity.x = vx;
+    object.velocity.y = vy;
+    return object;
   }
 
   updateForces (simulation) {
@@ -101,11 +93,11 @@ class PointMass {
 
   /** @param {Simulation} simulation */
   update (simulation) {
-    this.velocity.x += this.acceleration.x * simulation.deltaTime;
-    this.velocity.y += this.acceleration.y * simulation.deltaTime;
+    this.velocity.x += this.acceleration.x * simulation.timeStep;
+    this.velocity.y += this.acceleration.y * simulation.timeStep;
 
-    this.position.x += this.velocity.x * simulation.deltaTime;
-    this.position.y += this.velocity.y * simulation.deltaTime;
+    this.position.x += this.velocity.x * simulation.timeStep;
+    this.position.y += this.velocity.y * simulation.timeStep;
   }
 
   /** @param {Simulation} simulation */
@@ -118,8 +110,8 @@ class PointMass {
     for (const object of simulation.objects) {
       if (object === this) continue;
       const distance = this.position.distanceTo(object.position);
-      // Ug = m * g * h
-      energy.gravitational += G * this.mass * object.mass / (distance ** 2);
+      // Ug = -G * m1 * m2 / r
+      energy.gravitational += G * this.mass * object.mass / distance;
     }
 
     return energy;
@@ -160,7 +152,7 @@ class Simulation {
     this.updateCanvasSize();
 
     this.center = new Vector();
-    this.zoom = 1;
+    this.zoom = 0.000006339726086728971;
     this.canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
       const mouseup = (e) => {
@@ -169,8 +161,8 @@ class Simulation {
       };
       const mousemove = (e) => {
         e.preventDefault();
-        this.center.x += e.movementX;
-        this.center.y += e.movementY;
+        this.center.x += e.movementX / this.zoom;
+        this.center.y += e.movementY / this.zoom;
       };
       const cleanup = () => {
         document.removeEventListener('mouseup', mouseup);
@@ -179,17 +171,24 @@ class Simulation {
       document.addEventListener('mouseup', mouseup);
       document.addEventListener('mousemove', mousemove);
     });
+    // document.addEventListener('mousemove', (e) => {
+    //   console.log(this.getPointAtScreenPoint(e.clientX, e.clientY))
+    // })
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      this.zoom += -e.deltaY * 0.001;
+
+      const deltaY = -e.deltaY * 0.01;
+      let newZoom = this.zoom * (2 ** deltaY);
       const MIN_ZOOM = 0.000001;
-      if (this.zoom < MIN_ZOOM) {
-        this.zoom = MIN_ZOOM;
+      if (newZoom < MIN_ZOOM) {
+        newZoom = MIN_ZOOM;
       }
+
+      this.zoom = newZoom;
     });
 
     this.objects = [];
-    this.deltaTime = 0;
+    this.timeStep = TIME_STEP;
   }
 
   updateCanvasSize() {
@@ -198,6 +197,16 @@ class Simulation {
     this.pixelRatio = window.devicePixelRatio;
     this.canvas.width = this.baseWidth * this.pixelRatio;
     this.canvas.height = this.baseHeight * this.pixelRatio;
+    this.rect = this.canvas.getBoundingClientRect();
+  }
+
+  getPointAtScreenPoint(clientX, clientY) {
+    const canvasX = clientX - this.rect.left;
+    const canvasY = clientY - this.rect.top;
+    return new Vector(
+      this.center.x + (canvasX - (this.rect.width / 2)) / this.zoom,
+      this.center.y + (canvasY - (this.rect.height / 2)) / this.zoom
+    );
   }
 
   addObject(object) {
@@ -207,50 +216,66 @@ class Simulation {
   next(currentTime) {
     requestAnimationFrame(this.next);
 
-    // this.deltaTime = (this.previousTime === -1 ? 0 : (currentTime - this.previousTime)) * TIME_STEP;
-    // this.previousTime = currentTime;
-    this.deltaTime = 16 * TIME_STEP;
+    let deltaTimeMS = this.previousTime === -1 ? 0 : (currentTime - this.previousTime);
+    this.previousTime = currentTime;
+    deltaTimeMS = clamp(deltaTimeMS, 0, 100);
+    const deltaTimeSeconds = deltaTimeMS / 1000;
 
-    for (let i = 0; i < TIME_STEPS_PER_UPDATE; i++) {
-      for (const object of this.objects) {
-        object.updateForces(this);
-      }
-      for (const object of this.objects) {
-        object.update(this);
-      }
+    const stepsToPerform = deltaTimeSeconds * TIME_STEPS_PER_SECOND;
+    for (let i = 0; i < stepsToPerform; i++) {
+      this.update();
+    }
+
+    this.render();
+
+    // const totalEnergy = new Energy();
+    // let totalMomentum = 0;
+    // for (const object of this.objects) {
+    //   const objectEnergy = object.getEnergy(this);
+    //   const objectMomentum = object.getMomentum();
+    //   totalMomentum += objectMomentum;
+    //   totalEnergy.kinetic += objectEnergy.kinetic;
+    //   totalEnergy.gravitational += objectEnergy.gravitational;
+    // }
+    // console.log(totalEnergy.total(), totalMomentum);
+  }
+
+  update () {
+    for (const object of this.objects) {
+      object.updateForces(this);
+    }
+    for (const object of this.objects) {
+      object.update(this);
+    }
+  }
+
+  render () {
+    // Save power when not visible
+    if (document.hidden) {
+      return;
     }
 
     this.ctx.save();
 
-    // Handle high-DPI screens
+    // Upscale for high-DPI screens
     this.ctx.scale(this.pixelRatio, this.pixelRatio);
 
+    // Redraw background over old frame
     this.ctx.fillStyle = 'black';
     this.ctx.fillRect(0, 0, this.baseWidth, this.baseHeight);
 
     // Move (0, 0) to the center of the canvas
     this.ctx.translate(this.baseWidth / 2, this.baseHeight / 2);
 
-    // Move the center of the canvas to the user's center
-    this.ctx.translate(this.center.x, this.center.y);
-
+    // Apply user zoom
     this.ctx.scale(this.zoom, this.zoom);
+
+    // Apply user pan
+    this.ctx.translate(this.center.x, this.center.y);
 
     for (const object of this.objects) {
       object.render(this);
     }
-
-    // this.ctx.fillStyle = 'white';
-    // this.ctx.font = '30px sans-serif';
-    // this.ctx.fillText("Trolled!", 100, 100);
-
-    const totalEnergy = new Energy();
-    for (const object of this.objects) {
-      const energy = object.getEnergy(this);
-      totalEnergy.kinetic += energy.kinetic;
-      totalEnergy.gravitational += energy.gravitational;
-    }
-    console.log(totalEnergy.kinetic + totalEnergy.gravitational);
 
     this.ctx.restore();
   }
@@ -262,19 +287,33 @@ class Simulation {
 
 const simulation = new Simulation();
 
-const earth = new PointMass();
-earth.mass = 5.972e24;
-earth.radius = 6.371e6;
-earth.position.x = 0;
-earth.position.y = 0;
+const earth = PointMass.from(5.972e24, 6.371e6, 0, 0, 0, 0);
 simulation.addObject(earth);
 
-const moon = new PointMass();
-moon.mass = 7.34767309e22;
-moon.radius = 1737400;
-moon.velocity.x = 1028.192;
-moon.position.x = 0;
-moon.position.y = earth.radius + 378000000;
+const moon = PointMass.from(7.34767309e22, 1737400, 0, earth.radius + 378000000, 1028.192, 0);
 simulation.addObject(moon);
+
+const iss = PointMass.from(444615000, 70000, 0, earth.radius + 413000, 7660, 0);
+simulation.addObject(iss);
+
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 20000000, 3500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 30000000, 2500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 40000000, 2500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 50000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 60000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 70000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 80000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 90000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 100000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 110000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 120000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 130000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 140000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 150000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 160000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 170000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 180000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 190000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 200000000, 1500, 0));
 
 simulation.start();
