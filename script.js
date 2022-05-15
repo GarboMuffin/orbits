@@ -127,10 +127,25 @@ class PointMass {
     simulation.ctx.save();
 
     simulation.ctx.translate(this.position.x, this.position.y);
+
     simulation.ctx.fillStyle = 'white';
     simulation.ctx.beginPath();
     simulation.ctx.arc(0, 0, this.radius, 0, 2 * Math.PI);
     simulation.ctx.fill();
+
+    simulation.ctx.beginPath();
+    simulation.ctx.strokeStyle = 'blue';
+    simulation.ctx.lineWidth = this.radius / 3;
+    simulation.ctx.moveTo(0, 0);
+    simulation.ctx.lineTo(this.velocity.x * 1000, this.velocity.y * 1000);
+    simulation.ctx.stroke();
+
+    simulation.ctx.beginPath();
+    simulation.ctx.strokeStyle = 'red';
+    simulation.ctx.lineWidth = this.radius / 3;
+    simulation.ctx.moveTo(0, 0);
+    simulation.ctx.lineTo(this.netForce.x / this.mass * 2500000, this.netForce.y / this.mass * 2500000);
+    simulation.ctx.stroke();
 
     simulation.ctx.restore();
   }
