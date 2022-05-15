@@ -194,6 +194,7 @@ class Simulation {
   }
 
   zoomBy(deltaY, screenX, screenY) {
+    // When we zoom, we want the point under the mouse cursor to remain the same.
     const point = this.getSimulationPointAtScreenPoint(screenX, screenY);
     const screenDistanceToLeftEdge = screenX - this.rect.left;
     const screenDistanceToTop = screenY - this.rect.top;
@@ -269,12 +270,14 @@ class Simulation {
   }
 
   update () {
-    // Reset the force vector of each object. Forces are recalculated on every update.
+    // Forces are recalculated on every update.
     for (let i = 0; i < this.objects.length; i++) {
       const object = this.objects[i];
       object.netForce.x = 0;
       object.netForce.y = 0;
     }
+
+    // This process is slow, but this weird loop pattern significantly reduces the performance impact.
     for (let i = 0; i < this.objects.length; i++) {
       const objectA = this.objects[i];
       for (let j = i + 1; j < this.objects.length; j++) {
@@ -299,11 +302,9 @@ class Simulation {
         objectB.netForce.x -= forceX;
         objectB.netForce.y -= forceY;
       }
-    }
 
-    for (let i = 0; i < this.objects.length; i++) {
-      const object = this.objects[i];
-      object.update();
+      // All forces involving object A have been calculated, so we can move it.
+      objectA.update();
     }
   }
 
