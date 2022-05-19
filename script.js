@@ -162,6 +162,8 @@ class Simulation {
 
     this.updateRollover = 0;
 
+    this.dirty = false;
+
     window.addEventListener('resize', () => {
       this.updateCanvasSize();
     });
@@ -202,11 +204,13 @@ class Simulation {
     this.pixelRatio = window.devicePixelRatio;
     this.canvas.width = this.baseWidth * this.pixelRatio;
     this.canvas.height = this.baseHeight * this.pixelRatio;
+    this.dirty = true;
   }
 
   panBy(screenMovementX, screenMovementY) {
     this.center.x -= screenMovementX / this.zoom;
     this.center.y -= screenMovementY / this.zoom;
+    this.dirty = true;
   }
 
   zoomBy(deltaY, screenX, screenY) {
@@ -225,6 +229,8 @@ class Simulation {
     const newSimulationTop = point.y - (screenDistanceToTop / this.zoom);
     this.center.x = newSimulationLeftEdge + (newViewport.width / 2);
     this.center.y = newSimulationTop + (newViewport.height / 2);
+
+    this.dirty = true;
   }
 
   getSimulationPointAtScreenPoint(clientX, clientY) {
@@ -335,6 +341,8 @@ class Simulation {
       // All forces involving object A have been calculated, so we can move it.
       objectA.updateKinematics();
     }
+
+    this.dirty = true;
   }
 
   render () {
@@ -342,6 +350,12 @@ class Simulation {
     if (document.hidden) {
       return;
     }
+
+    // Don't render if nothing changed
+    if (!this.dirty) {
+      return;
+    }
+    this.dirty = false;
 
     this.ctx.save();
 
