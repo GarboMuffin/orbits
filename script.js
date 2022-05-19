@@ -87,7 +87,7 @@ class PointMass {
   }
 
   /** @param {Simulation} simulation */
-  update() {
+  updateKinematics() {
     // Repeated addition of many small time slices approximates an integral
 
     // Acceleration = Force / Mass
@@ -304,7 +304,7 @@ class Simulation {
       }
 
       // All forces involving object A have been calculated, so we can move it.
-      objectA.update();
+      objectA.updateKinematics();
     }
   }
 
