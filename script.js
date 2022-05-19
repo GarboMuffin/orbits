@@ -27,15 +27,33 @@ class Vector {
 }
 
 class Rectangle {
-  constructor(x, y, width, height) {
+  constructor(left, top, right, bottom) {
     /** @type {number} x coordinate of top left corner */
-    this.x = x;
+    this.left = left;
     /** @type {number} y coordinate of top left corner */
-    this.y = y;
-    /** @type {number} width in the +x direction */
-    this.width = width;
-    /** @type {number} height in the +y direction */
-    this.height = height;
+    this.top = top;
+    /** @type {number} x coordinate of bottom right corner */
+    this.right = right;
+    /** @type {number} y coordinate of bottom right corner */
+    this.bottom = bottom;
+  }
+
+  get width() {
+    return this.right - this.left;
+  }
+
+  get height() {
+    return this.bottom - this.top;
+  }
+
+  /** @param {Rectangle} other */
+  intersects(other) {
+    return (
+      this.left <= other.right &&
+      other.left <= this.right &&
+      this.top <= other.bottom &&
+      other.top <= this.bottom
+    );
   }
 }
 
@@ -123,6 +141,15 @@ class PointMass {
   getMomentum () {
     // p = m * v
     return this.mass * this.velocity.magnitude();
+  }
+
+  getBounds () {
+    return new Rectangle(
+      this.position.x - this.radius,
+      this.position.y - this.radius,
+      this.position.x + this.radius,
+      this.position.y + this.radius
+    );
   }
 }
 
@@ -216,11 +243,13 @@ class Simulation {
   getSimulationViewport() {
     const viewportWidth = this.baseWidth / this.zoom;
     const viewportHeight = this.baseHeight / this.zoom;
+    const left = this.center.x - (viewportWidth / 2);
+    const top = this.center.y - (viewportHeight / 2);
     return new Rectangle(
-      this.center.x - (viewportWidth / 2),
-      this.center.y - (viewportHeight / 2),
-      viewportWidth,
-      viewportHeight
+      left,
+      top,
+      left + viewportWidth,
+      top + viewportHeight
     );
   }
 
@@ -332,7 +361,14 @@ class Simulation {
     // Apply user pan
     this.ctx.translate(-this.center.x, -this.center.y);
 
+    const viewport = this.getSimulationViewport();
+
     for (const object of this.objects) {
+      // Don't waste time trying to render objects that are completely offscreen
+      if (!object.getBounds().intersects(viewport)) {
+        continue;
+      }
+
       this.ctx.save();
 
       this.ctx.translate(object.position.x, object.position.y);
