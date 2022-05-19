@@ -305,7 +305,7 @@ class Simulation {
           const angle = Math.atan2(-dy, -dx);
 
           // Spring force = stretch * spring constant
-          const springConstant = 1000;
+          const springConstant = 10000;
           const springMagnitude = springConstant * penetration;
           const springX = springMagnitude * Math.cos(angle);
           const springY = springMagnitude * Math.sin(angle);
