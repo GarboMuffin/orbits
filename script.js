@@ -98,7 +98,7 @@ class PointMass {
     this.velocity.x += accelerationX * TIME_STEP;
     this.velocity.y += accelerationY * TIME_STEP;
 
-    // Integrate position to find position
+    // Integrate velocity to find position
     this.position.x += this.velocity.x * TIME_STEP;
     this.position.y += this.velocity.y * TIME_STEP;
   }
