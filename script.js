@@ -133,8 +133,6 @@ class Simulation {
     /** @type {CanvasRenderingContext2D} */
     this.ctx = this.canvas.getContext('2d');
 
-    this.next = this.next.bind(this);
-    this.previousTime = -1;
     this.updateRollover = 0;
 
     window.addEventListener('resize', () => {
@@ -230,14 +228,7 @@ class Simulation {
     this.objects.push(object);
   }
 
-  next(currentTime) {
-    requestAnimationFrame(this.next);
-
-    let deltaTimeMS = this.previousTime === -1 ? 0 : (currentTime - this.previousTime);
-    this.previousTime = currentTime;
-    deltaTimeMS = clamp(deltaTimeMS, 0, 100);
-    const deltaTimeSeconds = deltaTimeMS / 1000;
-
+  next(deltaTimeSeconds) {
     // If we calculate that we have to run something like "7.5 steps", we'll carry the 0.5 over to the next
     // step so that if we get another "7.5 steps", we'll do 7 + 8 = 15 steps instead of 7 + 7 = 14 steps.
     const stepsToPerform = deltaTimeSeconds * TIME_STEPS_PER_SECOND + this.updateRollover;
@@ -372,7 +363,18 @@ class Simulation {
   }
 
   start() {
-    requestAnimationFrame(this.next);
+    let previousTime = -1;
+    const animationFrameCallback = (currentTime) => {
+      requestAnimationFrame(animationFrameCallback);
+
+      let deltaTimeMS = previousTime === -1 ? 0 : (currentTime - previousTime);
+      previousTime = currentTime;
+      deltaTimeMS = clamp(deltaTimeMS, 0, 100);
+      const deltaTimeSeconds = deltaTimeMS / 1000;
+  
+      this.next(deltaTimeSeconds);
+    };
+    requestAnimationFrame(animationFrameCallback);
   }
 }
 
