@@ -1,6 +1,6 @@
 // In seconds
 const TIME_STEP = 0.01;
-const TIME_STEPS_PER_SECOND = 100;
+const TIME_STEPS_PER_SECOND = 50000;
 
 // Gravitational constant
 const G = 6.674e-11;
@@ -70,6 +70,9 @@ class PointMass {
 
     /** @type {number} radius in meters */
     this.radius = 10;
+
+    /** @type {color} color of the point */
+    this.color = 'white';
   }
 
   static from(mass, radius, x, y, vx, vy) {
@@ -273,22 +276,36 @@ class Simulation {
 
         const distance = objectA.position.distanceTo(objectB.position);
 
+        const nonCollidingDistance = objectA.radius + objectB.radius;
+        const penetration = nonCollidingDistance - distance;
+        if (penetration > 0) {
+          const angle = Math.atan2(objectA.position.y - objectB.position.y, objectA.position.x - objectB.position.x);
+
+          // Spring force = stretch * spring constant
+          const springConstant = 1000;
+          const springX = penetration * Math.cos(angle) * springConstant;
+          const springY = penetration * Math.sin(angle) * springConstant;
+
+          objectA.netForce.x += springX;
+          objectA.netForce.y += springY;
+          objectB.netForce.x -= springX;
+          objectB.netForce.y -= springY;
+        }
+
         // Universal gravitational field strength
         // Fg = G * m1 * m2 / r^2
-        const magnitude = G * objectA.mass * objectB.mass / (distance ** 2);
+        const gravityMagnitude = G * objectA.mass * objectB.mass / (distance ** 2);
 
         // We have two similar right triangles:
         // 1) Hypotenuse = distance between points, legs = displacement between points
         // 2) Hypotenuse = force, legs = components of force
         // These equations were found using proportions
-        const forceX = (objectB.position.x - objectA.position.x) * magnitude / distance;
-        const forceY = (objectB.position.y - objectA.position.y) * magnitude / distance;
-
-        objectA.netForce.x += forceX;
-        objectA.netForce.y += forceY;
-        // Newton's third law
-        objectB.netForce.x -= forceX;
-        objectB.netForce.y -= forceY;
+        const gravityX = (objectB.position.x - objectA.position.x) * gravityMagnitude / distance;
+        const gravityY = (objectB.position.y - objectA.position.y) * gravityMagnitude / distance;
+        objectA.netForce.x += gravityX;
+        objectA.netForce.y += gravityY;
+        objectB.netForce.x -= gravityX;
+        objectB.netForce.y -= gravityY;
       }
 
       // All forces involving object A have been calculated, so we can move it.
@@ -325,23 +342,23 @@ class Simulation {
 
       this.ctx.translate(object.position.x, object.position.y);
 
-      this.ctx.fillStyle = 'white';
+      this.ctx.fillStyle = object.color;
       this.ctx.beginPath();
       this.ctx.arc(0, 0, object.radius, 0, 2 * Math.PI);
       this.ctx.fill();
 
       // this.ctx.beginPath();
       // this.ctx.strokeStyle = 'blue';
-      // this.ctx.lineWidth = this.radius / 3;
+      // this.ctx.lineWidth = object.radius / 3;
       // this.ctx.moveTo(0, 0);
-      // this.ctx.lineTo(this.velocity.x * 1000, this.velocity.y * 1000);
+      // this.ctx.lineTo(object.velocity.x * 1000, object.velocity.y * 1000);
       // this.ctx.stroke();
 
       // this.ctx.beginPath();
       // this.ctx.strokeStyle = 'red';
-      // this.ctx.lineWidth = this.radius / 3;
+      // this.ctx.lineWidth = object.radius / 3;
       // this.ctx.moveTo(0, 0);
-      // this.ctx.lineTo(this.netForce.x / this.mass * 2500000, this.netForce.y / this.mass * 2500000);
+      // this.ctx.lineTo(object.netForce.x / object.mass * 2500000, object.netForce.y / object.mass * 2500000);
       // this.ctx.stroke();
 
       this.ctx.restore();
@@ -360,56 +377,56 @@ const simulation = new Simulation();
 const earth = PointMass.from(5.972e24, 6.371e6, 0, 0, 0, 0);
 simulation.addObject(earth);
 
-// const moon = PointMass.from(7.34767309e22, 1737400, 0, earth.radius + 378000000, 1028.192, 0);
-// simulation.addObject(moon);
+const moon = PointMass.from(7.34767309e22, 1737400, 0, earth.radius + 378000000, 1028.192, 0);
+simulation.addObject(moon);
 
-// const iss = PointMass.from(444615000, 70000, 0, earth.radius + 413000, 7660, 0);
-// simulation.addObject(iss);
+const iss = PointMass.from(444615000, 70000, 0, earth.radius + 413000, 7660, 0);
+simulation.addObject(iss);
 
-const projectile = PointMass.from(1, 10, 0, -earth.radius - 200, 100, 0);
+const projectile = PointMass.from(100, 30000, 0, -iss.position.y, 1000, 0);
 simulation.addObject(projectile);
 
-simulation.center.y = -earth.radius;
-simulation.zoom = 1;
+simulation.center.y = projectile.position.y;
+simulation.zoom = 0.00009380341682666084;
 
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 20000000, 3500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 30000000, 2500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 40000000, 2500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 50000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 60000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 70000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 80000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 90000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 100000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 110000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 120000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 130000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 140000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 150000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 160000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 170000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 180000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 190000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 200000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 250000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 25000000, 3500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 35000000, 2500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 45000000, 2500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 55000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 65000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 75000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 85000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 95000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 105000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 115000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 125000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 135000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 145000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 155000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 165000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 175000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 185000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 195000000, 1500, 0));
-// simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 205000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 20000000, 3500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 30000000, 2500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 40000000, 2500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 50000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 60000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 70000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 80000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 90000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 100000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 110000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 120000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 130000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 140000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 150000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 160000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 170000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 180000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 190000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 200000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 250000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 25000000, 3500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 35000000, 2500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 45000000, 2500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 55000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 65000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 75000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 85000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 95000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 105000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 115000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 125000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 135000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 145000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 155000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 165000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 175000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 185000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 195000000, 1500, 0));
+simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 205000000, 1500, 0));
 
 simulation.start();
