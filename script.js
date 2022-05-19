@@ -1,6 +1,6 @@
 // In seconds
-const TIME_STEP = 0.01;
-const TIME_STEPS_PER_SECOND = 50000;
+const TIME_STEP = 0.05;
+const TIME_STEPS_PER_SECOND = 10000;
 
 // Gravitational constant
 const G = 6.674e-11;
@@ -275,16 +275,20 @@ class Simulation {
         const objectB = this.objects[j];
 
         const distance = objectA.position.distanceTo(objectB.position);
+        const dx = objectB.position.x - objectA.position.x;
+        const dy = objectB.position.y - objectA.position.y;
 
         const nonCollidingDistance = objectA.radius + objectB.radius;
         const penetration = nonCollidingDistance - distance;
         if (penetration > 0) {
-          const angle = Math.atan2(objectA.position.y - objectB.position.y, objectA.position.x - objectB.position.x);
+          // TODO: remove Math.atan2 etc.
+          const angle = Math.atan2(-dy, -dx);
 
           // Spring force = stretch * spring constant
           const springConstant = 1000;
-          const springX = penetration * Math.cos(angle) * springConstant;
-          const springY = penetration * Math.sin(angle) * springConstant;
+          const springMagnitude = springConstant * penetration;
+          const springX = springMagnitude * Math.cos(angle);
+          const springY = springMagnitude * Math.sin(angle);
 
           objectA.netForce.x += springX;
           objectA.netForce.y += springY;
@@ -300,8 +304,8 @@ class Simulation {
         // 1) Hypotenuse = distance between points, legs = displacement between points
         // 2) Hypotenuse = force, legs = components of force
         // These equations were found using proportions
-        const gravityX = (objectB.position.x - objectA.position.x) * gravityMagnitude / distance;
-        const gravityY = (objectB.position.y - objectA.position.y) * gravityMagnitude / distance;
+        const gravityX = dx * gravityMagnitude / distance;
+        const gravityY = dy * gravityMagnitude / distance;
         objectA.netForce.x += gravityX;
         objectA.netForce.y += gravityY;
         objectB.netForce.x -= gravityX;
