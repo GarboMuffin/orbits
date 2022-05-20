@@ -115,12 +115,18 @@ class PointMass {
     return this;
   }
 
+  setColor(color) {
+    this.color = color;
+    return this;
+  }
+
   clone() {
     return new PointMass()
       .setMass(this.mass)
       .setRadius(this.radius)
       .setPosition(this.position.x, this.position.y)
-      .setVelocity(this.velocity.x, this.velocity.y);
+      .setVelocity(this.velocity.x, this.velocity.y)
+      .setColor(this.color);
   }
 
   /** @param {number} timeStep Time step, in seconds */
@@ -511,7 +517,8 @@ const params = new URLSearchParams(location.search);
 
 const earth = new PointMass()
   .setMass(5.972e24)
-  .setRadius(6.371e6);
+  .setRadius(6.371e6)
+  .setColor('rgba(50, 255, 50)');
 simulation.addObject(earth);
 
 const moon = new PointMass()
@@ -525,7 +532,8 @@ const iss = new PointMass()
   .setMass(444615000)
   .setRadius(70000)
   .setPosition(0, earth.radius + 413000)
-  .setVelocity(7660, 0);
+  .setVelocity(7660, 0)
+  .setColor('rgba(127, 127, 255)');
 simulation.addObject(iss);
 
 const projectile = new PointMass()
@@ -544,7 +552,7 @@ const testObject = new PointMass()
 simulation.addObject(testObject);
 simulation.addObject(testObject.clone().moveBy(0, 2000000).setVelocity(0, -5000))
 
-simulation.center.y = testObject.position.y;
+simulation.center.y = projectile.position.y;
 simulation.zoom = 0.00009380341682666084;
 
 simulation.render();
