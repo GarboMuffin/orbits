@@ -1,7 +1,3 @@
-// In seconds
-const TIME_STEP = 0.05;
-const TIME_STEPS_PER_SECOND = 10000;
-
 // Gravitational constant
 const G = 6.674e-11;
 
@@ -104,8 +100,8 @@ class PointMass {
     return object;
   }
 
-  /** @param {Simulation} simulation */
-  updateKinematics() {
+  /** @param {number} timeStep Time step, in seconds */
+  updateKinematics(timeStep) {
     // Repeated addition of many small time slices approximates an integral
 
     // Acceleration = Force / Mass
@@ -113,12 +109,12 @@ class PointMass {
     const accelerationY = this.netForce.y / this.mass;
 
     // Integrate acceleration to find velocity
-    this.velocity.x += accelerationX * TIME_STEP;
-    this.velocity.y += accelerationY * TIME_STEP;
+    this.velocity.x += accelerationX * timeStep;
+    this.velocity.y += accelerationY * timeStep;
 
     // Integrate velocity to find position
-    this.position.x += this.velocity.x * TIME_STEP;
-    this.position.y += this.velocity.y * TIME_STEP;
+    this.position.x += this.velocity.x * timeStep;
+    this.position.y += this.velocity.y * timeStep;
   }
 
   /** @param {Simulation} simulation */
@@ -165,6 +161,10 @@ class Simulation {
     this.dirty = false;
 
     this.running = true;
+
+    this.updatesPerSecond = 60;
+    /** @param {number} In seconds */
+    this.timeStep = 1 / this.updatesPerSecond;
 
     window.addEventListener('resize', () => {
       this.updateCanvasSize();
@@ -269,7 +269,7 @@ class Simulation {
     if (this.running) {
       // If we calculate that we have to run something like "7.5 steps", we'll carry the 0.5 over to the next
       // step so that if we get another "7.5 steps", we'll do 7 + 8 = 15 steps instead of 7 + 7 = 14 steps.
-      const stepsToPerform = deltaTimeSeconds * TIME_STEPS_PER_SECOND + this.updateRollover;
+      const stepsToPerform = deltaTimeSeconds * this.updatesPerSecond + this.updateRollover;
       this.updateRollover = stepsToPerform % 1;
       for (let i = 0; i < Math.floor(stepsToPerform); i++) {
         this.updateObjects();
@@ -347,7 +347,7 @@ class Simulation {
       }
 
       // All forces involving object A have been calculated, so we can move it.
-      objectA.updateKinematics();
+      objectA.updateKinematics(this.timeStep);
     }
 
     this.dirty = true;
@@ -428,18 +428,43 @@ class Simulation {
     this.running = true;
   }
 
+  toggleRunning() {
+    if (this.running) {
+      this.pause();
+    } else {
+      this.resume();
+    }
+  }
+
+  getSpeedRelativeToRealtime() {
+    return this.updatesPerSecond * this.timeStep;
+  }
+
+  setExponentialSpeed(exponentialSpeed) {
+    this.updatesPerSecond = 2 ** exponentialSpeed;
+  }
+
   startAnimationFrameLoop() {
+    let focused = true;
+    window.addEventListener('focus', () => {
+      focused = true;
+    });
+    window.addEventListener('blur', () => {
+      focused = false;
+    });
+
     let previousTime = -1;
     const animationFrameCallback = (currentTime) => {
       requestAnimationFrame(animationFrameCallback);
 
-      let deltaTimeMS = previousTime === -1 ? 0 : (currentTime - previousTime);
+      let deltaTimeMS = (previousTime === -1 || !focused) ? 0 : (currentTime - previousTime);
       previousTime = currentTime;
       deltaTimeMS = clamp(deltaTimeMS, 0, 100);
       const deltaTimeSeconds = deltaTimeMS / 1000;
-  
+
       this.next(deltaTimeSeconds);
     };
+
     requestAnimationFrame(animationFrameCallback);
   }
 }
@@ -504,12 +529,4 @@ simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 195000
 simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 205000000, 1500, 0));
 
 simulation.render();
-
-window.addEventListener('focus', () => {
-  simulation.resume();
-});
-window.addEventListener('blur', () => {
-  simulation.pause();
-});
-
 simulation.startAnimationFrameLoop();

@@ -3,6 +3,9 @@
   <head>
     <title>Orbital Motion Simulator</title>
     <style>
+      body {
+        font-family: sans-serif;
+      }
       #canvas {
         position: absolute;
         top: 0;
@@ -11,11 +14,76 @@
         height: 100%;
         background: black;
       }
+      #interface {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 200px;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        transition: transform .2s;
+        color: white;
+      }
+      #interface.hidden {
+        transform: translateX(-100%);
+      }
+      .toggle-interface {
+      }
+      .option {
+        display: block;
+        width: 100%;
+      }
     </style>
   </head>
 
   <body>
     <canvas id="canvas"></canvas>
     <script src="script.js"></script>
+
+    <div
+      id="interface"
+      hidden
+      x-data="{
+        open: true,
+        simulation
+      }"
+      x-bind:class="open ? '' : 'hidden'"
+    >
+      <button
+        style="
+          position: absolute;
+          right: 0;
+          transform: translateX(100%);
+        "
+        x-on:click="open = !open"
+      >
+        <div x-show="!open">&gt;&gt;</div>
+        <div x-show="open">&lt;&lt;</div>
+      </button>
+
+      <button
+        class="option"
+        x-on:click="simulation.toggleRunning()"
+      >
+        <div x-show="simulation.running">Pause</div>
+        <div x-show="!simulation.running">Resume</div>
+      </button>
+
+      <label class="option">
+        <input
+          type="range"
+          min="0"
+          value="1"
+          max="19"
+          step="0.1"
+          x-on:input="simulation.setExponentialSpeed(+event.target.value)"
+        >
+        <span x-text="Math.round(simulation.getSpeedRelativeToRealtime() * 10) / 10"></span>x
+      </label>
+    </div>
+    <script src="alpine.js"></script>
+    <script>
+      document.getElementById('interface').hidden = false;
+    </script>
   </body>
 </html>
