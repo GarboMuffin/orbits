@@ -19,19 +19,49 @@
         top: 0;
         left: 0;
         width: 200px;
-        height: 100%;
+        box-sizing: border-box;
         background: rgba(0, 0, 0, 0.5);
-        transition: transform .2s;
         color: white;
+        border-right: 1px solid rgba(255, 255, 255, 0.5);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+        padding: 4px;
+        border-bottom-right-radius: 8px;
+        transition: transform .2s;
       }
       #interface.hidden {
         transform: translateX(-100%);
       }
-      .toggle-interface {
+
+      .toggle-button {
+        transition: .2s opacity;
       }
+      #interface.hidden .toggle-button {
+        opacity: 0;
+        transition: .2s opacity;
+        transition-delay: 2s;
+      }
+      #interface.hidden .toggle-button:hover {
+        opacity: 1;
+        transition: .2s opacity;
+      }
+
       .option {
         display: block;
         width: 100%;
+      }
+
+      button {
+        display: block;
+        background: rgba(255, 255, 255);
+        border: 1px solid rgba(0, 0, 0);
+        box-sizing: border-box;
+        min-width: 30px;
+        min-height: 30px;
+        text-align: center;
+        border-radius: 4px;
+      }
+      button:active {
+        background: rgba(200, 200, 200);
       }
     </style>
   </head>
@@ -50,12 +80,13 @@
       x-bind:class="open ? '' : 'hidden'"
     >
       <button
+        class="toggle-button"
         style="
           position: absolute;
-          right: 0;
+          right: -3px;
           transform: translateX(100%);
         "
-        x-on:click="open = !open"
+        @click="open = !open"
       >
         <div x-show="!open">&gt;&gt;</div>
         <div x-show="open">&lt;&lt;</div>
@@ -63,22 +94,37 @@
 
       <button
         class="option"
-        x-on:click="simulation.toggleRunning()"
+        @click="simulation.toggleRunning()"
       >
         <div x-show="simulation.running">Pause</div>
         <div x-show="!simulation.running">Resume</div>
       </button>
 
-      <label class="option">
+      <label
+        class="option"
+        style="
+          display: flex;
+          text-align: center;
+        "
+      >
         <input
           type="range"
-          min="0"
-          value="1"
-          max="19"
+          min="-2"
+          value="15"
+          max="22"
           step="0.1"
-          x-on:input="simulation.setExponentialSpeed(+event.target.value)"
+          autocomplete="off"
+          style="
+            width: 130px;
+          "
+          x-init="simulation.setExponentialSpeed($el.value)"
+          @input="simulation.setExponentialSpeed(+$el.value)"
         >
-        <span x-text="Math.round(simulation.getSpeedRelativeToRealtime() * 10) / 10"></span>x
+        <div style="flex-grow: 1;">
+          <span
+            x-text="Math.round(simulation.getSpeedRelativeToRealtime() * 10) / 10"
+          ></span>x
+        </div>
       </label>
     </div>
     <script src="alpine.js"></script>
