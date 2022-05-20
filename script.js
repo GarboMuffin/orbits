@@ -164,6 +164,8 @@ class Simulation {
 
     this.dirty = false;
 
+    this.running = true;
+
     window.addEventListener('resize', () => {
       this.updateCanvasSize();
     });
@@ -264,12 +266,14 @@ class Simulation {
   }
 
   next(deltaTimeSeconds) {
-    // If we calculate that we have to run something like "7.5 steps", we'll carry the 0.5 over to the next
-    // step so that if we get another "7.5 steps", we'll do 7 + 8 = 15 steps instead of 7 + 7 = 14 steps.
-    const stepsToPerform = deltaTimeSeconds * TIME_STEPS_PER_SECOND + this.updateRollover;
-    this.updateRollover = stepsToPerform % 1;
-    for (let i = 0; i < Math.floor(stepsToPerform); i++) {
-      this.update();
+    if (this.running) {
+      // If we calculate that we have to run something like "7.5 steps", we'll carry the 0.5 over to the next
+      // step so that if we get another "7.5 steps", we'll do 7 + 8 = 15 steps instead of 7 + 7 = 14 steps.
+      const stepsToPerform = deltaTimeSeconds * TIME_STEPS_PER_SECOND + this.updateRollover;
+      this.updateRollover = stepsToPerform % 1;
+      for (let i = 0; i < Math.floor(stepsToPerform); i++) {
+        this.updateObjects();
+      }
     }
 
     this.render();
@@ -286,7 +290,12 @@ class Simulation {
     // console.log(totalEnergy.total(), totalMomentum);
   }
 
-  update () {
+  updateObjects() {
+    if (this.objects.length === 0) {
+      // Nothing to do.
+      return;
+    }
+
     // Forces are recalculated on every update.
     for (let i = 0; i < this.objects.length; i++) {
       const object = this.objects[i];
@@ -294,7 +303,6 @@ class Simulation {
       object.netForce.y = 0;
     }
 
-    // This process is slow, but this weird loop pattern significantly reduces the performance impact.
     for (let i = 0; i < this.objects.length; i++) {
       const objectA = this.objects[i];
       for (let j = i + 1; j < this.objects.length; j++) {
@@ -345,7 +353,7 @@ class Simulation {
     this.dirty = true;
   }
 
-  render () {
+  render() {
     // Save power when not visible
     if (document.hidden) {
       return;
@@ -412,7 +420,15 @@ class Simulation {
     this.ctx.restore();
   }
 
-  start() {
+  pause() {
+    this.running = false;
+  }
+
+  resume() {
+    this.running = true;
+  }
+
+  startAnimationFrameLoop() {
     let previousTime = -1;
     const animationFrameCallback = (currentTime) => {
       requestAnimationFrame(animationFrameCallback);
@@ -429,6 +445,8 @@ class Simulation {
 }
 
 const simulation = new Simulation();
+
+const params = new URLSearchParams(location.search);
 
 const earth = PointMass.from(5.972e24, 6.371e6, 0, 0, 0, 0);
 simulation.addObject(earth);
@@ -485,4 +503,13 @@ simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 185000
 simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 195000000, 1500, 0));
 simulation.addObject(PointMass.from(4446150000, 700000, 0, earth.radius + 205000000, 1500, 0));
 
-simulation.start();
+simulation.render();
+
+window.addEventListener('focus', () => {
+  simulation.resume();
+});
+window.addEventListener('blur', () => {
+  simulation.pause();
+});
+
+simulation.startAnimationFrameLoop();
