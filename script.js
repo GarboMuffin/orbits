@@ -469,7 +469,7 @@ class Simulation {
 
       let deltaTimeMS = (previousTime === -1 || !focused) ? 0 : (currentTime - previousTime);
       previousTime = currentTime;
-      deltaTimeMS = clamp(deltaTimeMS, 0, 100);
+      deltaTimeMS = clamp(deltaTimeMS, 0, 30);
       const deltaTimeSeconds = deltaTimeMS / 1000;
 
       this.next(deltaTimeSeconds);
