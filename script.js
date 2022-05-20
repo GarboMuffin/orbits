@@ -195,6 +195,9 @@ class Simulation {
     /** @param {number} In seconds */
     this.timeStep = 1 / this.updatesPerSecond;
 
+    this.showVelocity = false;
+    this.showAcceleration = false;
+
     window.addEventListener('resize', () => {
       this.updateCanvasSize();
     });
@@ -436,19 +439,24 @@ class Simulation {
       this.ctx.arc(0, 0, object.radius, 0, 2 * Math.PI);
       this.ctx.fill();
 
-      // this.ctx.beginPath();
-      // this.ctx.strokeStyle = 'blue';
-      // this.ctx.lineWidth = object.radius / 3;
-      // this.ctx.moveTo(0, 0);
-      // this.ctx.lineTo(object.velocity.x * 1000, object.velocity.y * 1000);
-      // this.ctx.stroke();
+      // TODO: these need separate culling checks
+      if (this.showVelocity) {
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = 'blue';
+        this.ctx.lineWidth = object.radius / 3;
+        this.ctx.moveTo(0, 0);
+        this.ctx.lineTo(object.velocity.x * 1000, object.velocity.y * 1000);
+        this.ctx.stroke();
+      }
 
-      // this.ctx.beginPath();
-      // this.ctx.strokeStyle = 'red';
-      // this.ctx.lineWidth = object.radius / 3;
-      // this.ctx.moveTo(0, 0);
-      // this.ctx.lineTo(object.netForce.x / object.mass * 2500000, object.netForce.y / object.mass * 2500000);
-      // this.ctx.stroke();
+      if (this.showAcceleration) {
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = 'red';
+        this.ctx.lineWidth = object.radius / 3;
+        this.ctx.moveTo(0, 0);
+        this.ctx.lineTo(object.netForce.x / object.mass * 2500000, object.netForce.y / object.mass * 2500000);
+        this.ctx.stroke();
+      }
 
       this.ctx.restore();
     }
