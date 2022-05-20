@@ -445,7 +445,13 @@ class Simulation {
   }
 
   setExponentialSpeed(exponentialSpeed) {
-    this.updatesPerSecond = 2 ** exponentialSpeed;
+    const speedRelativeToRealtime = 1.5 ** exponentialSpeed;
+    if (speedRelativeToRealtime > 1000) {
+      this.timeStep = 0.1;
+    } else {
+      this.timeStep = 0.02;
+    }
+    this.updatesPerSecond = speedRelativeToRealtime / this.timeStep;
   }
 
   startAnimationFrameLoop() {
