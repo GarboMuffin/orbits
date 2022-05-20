@@ -195,6 +195,10 @@ class Simulation {
       this.zoomBy(e.deltaY, e.clientX, e.clientY);
     });
 
+    this.canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
     /** @type {PointMass[]} */
     this.objects = [];
   }
