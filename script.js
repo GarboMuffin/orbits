@@ -396,7 +396,7 @@ class Simulation {
           // This is an inaccurate approximation of actual collisions.
 
           const lesserMass = Math.min(objectA.mass, objectB.mass);
-          const acceleration = 10000; // m/s/s
+          const acceleration = 5000; // m/s/s
           const targetForce = lesserMass * acceleration;
 
           const springX = targetForce * Math.cos(angle);
