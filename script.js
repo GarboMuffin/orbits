@@ -3,6 +3,8 @@ const G = 6.674e-11;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+const randomColor = () => `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
+
 class Vector {
   constructor(x=0, y=0) {
     this.x = x;
@@ -622,14 +624,22 @@ simulation.addObject(projectile);
 const testObject = new PointMass()
   .setMass(4446150000)
   .setRadius(700000)
-  .setPosition(0, earth.radius + 20000000)
+  .setPosition(0, earth.radius + 22000000)
   .setVelocity(3500, 0);
 
-simulation.addObject(testObject);
-simulation.addObject(testObject.clone().moveBy(0, 2000000).setVelocity(0, -5000))
+for (let x = -4; x < 4; x++) {
+  for (let y = -4; y < 4; y++) {
+    const object = testObject
+      .clone()
+      .setColor(randomColor())
+      .moveBy(x * 4000000, y * 4000000)
+      .setVelocity(0, 0);
+    simulation.addObject(object);
+  }
+}
 
-simulation.center.y = projectile.position.y;
-simulation.zoom = 0.00009380341682666084;
+simulation.center.y = testObject.position.y;
+simulation.zoom = 0.00000580341682666084;
 
 simulation.render();
 simulation.startAnimationFrameLoop();
