@@ -368,22 +368,24 @@ class Simulation {
   updateObjects() {
     this.timestamp += this.timeStep;
 
-    if (this.objects.length === 0) {
+    const objects = this.objects;
+
+    if (objects.length === 0) {
       // Nothing to do.
       return;
     }
 
     // Forces are recalculated on every update.
-    for (let i = 0; i < this.objects.length; i++) {
-      const object = this.objects[i];
+    for (let i = 0; i < objects.length; i++) {
+      const object = objects[i];
       object.netForce.x = 0;
       object.netForce.y = 0;
     }
 
-    for (let i = 0; i < this.objects.length; i++) {
-      const objectA = this.objects[i];
-      for (let j = i + 1; j < this.objects.length; j++) {
-        const objectB = this.objects[j];
+    for (let i = 0; i < objects.length; i++) {
+      const objectA = objects[i];
+      for (let j = i + 1; j < objects.length; j++) {
+        const objectB = objects[j];
 
         const distance = objectA.position.distanceTo(objectB.position);
         const dx = objectB.position.x - objectA.position.x;
@@ -399,11 +401,13 @@ class Simulation {
 
           const lesserMass = Math.min(objectA.mass, objectB.mass);
           const acceleration = 5000; // m/s/s
-          const targetForce = lesserMass * acceleration;
+          // Force = Mass * Acceleration
+          const force = lesserMass * acceleration;
 
-          const springX = targetForce * Math.cos(angle);
-          const springY = targetForce * Math.sin(angle);
+          const springX = force * Math.cos(angle);
+          const springY = force * Math.sin(angle);
 
+          // Newton's third law: equal and opposite forces
           objectA.netForce.x += springX;
           objectA.netForce.y += springY;
           objectB.netForce.x -= springX;
@@ -420,6 +424,8 @@ class Simulation {
         // These equations were found using proportions
         const gravityX = dx * gravityMagnitude / distance;
         const gravityY = dy * gravityMagnitude / distance;
+
+        // Newton's third law: equal and opposite forces
         objectA.netForce.x += gravityX;
         objectA.netForce.y += gravityY;
         objectB.netForce.x -= gravityX;
