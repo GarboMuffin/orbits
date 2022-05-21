@@ -493,7 +493,8 @@ class Simulation {
         const points = object.trail.points;
         if (points.length > 0) {
           this.ctx.beginPath();
-          this.ctx.strokeStyle = 'rgb(127, 127, 127)';
+          this.ctx.strokeStyle = object.color;
+          this.ctx.globalAlpha = 0.5;
           this.ctx.moveTo(points[0].x, points[0].y);
           for (let p = 1; p < points.length; p++) {
             const point = points[p];
