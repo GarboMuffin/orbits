@@ -193,11 +193,6 @@ class PointMass {
     return this.mass * this.velocity.magnitude();
   }
 
-  getArea () {
-    // Area of circle = pi * r^2
-    return Math.PI * (this.radius ** 2);
-  }
-
   getBounds () {
     return new Rectangle(
       this.position.x - this.radius,
@@ -225,7 +220,7 @@ class Simulation {
     /** @param {number} In seconds */
     this.timeStep = 1 / this.updatesPerSecond;
 
-    this.showTrails = true;
+    this.showTrails = false;
     this.showVelocity = false;
     this.showAcceleration = false;
 
@@ -393,16 +388,19 @@ class Simulation {
         const dy = objectB.position.y - objectA.position.y;
 
         const nonCollidingDistance = objectA.radius + objectB.radius;
-        const penetration = nonCollidingDistance - distance;
-        if (penetration > 0) {
-          // TODO: remove Math.atan2 etc.
+        if (distance < nonCollidingDistance) {
           const angle = Math.atan2(-dy, -dx);
 
-          // Spring force = stretch * spring constant
-          const springConstant = 10000;
-          const springMagnitude = springConstant * penetration;
-          const springX = springMagnitude * Math.cos(angle);
-          const springY = springMagnitude * Math.sin(angle);
+          // This applies a large force to objects that are inside each other to make them stop touching.
+          // You can think of this as a spring force.
+          // This is an inaccurate approximation of actual collisions.
+
+          const lesserMass = Math.min(objectA.mass, objectB.mass);
+          const acceleration = 10000; // m/s/s
+          const targetForce = lesserMass * acceleration;
+
+          const springX = targetForce * Math.cos(angle);
+          const springY = targetForce * Math.sin(angle);
 
           objectA.netForce.x += springX;
           objectA.netForce.y += springY;
@@ -614,14 +612,14 @@ const projectile = new PointMass()
   .setVelocity(1000, 0);
 simulation.addObject(projectile);
 
-// const testObject = new PointMass()
-//   .setMass(4446150000)
-//   .setRadius(700000)
-//   .setPosition(0, earth.radius + 20000000)
-//   .setVelocity(3500, 0);
+const testObject = new PointMass()
+  .setMass(4446150000)
+  .setRadius(700000)
+  .setPosition(0, earth.radius + 20000000)
+  .setVelocity(3500, 0);
 
-// simulation.addObject(testObject);
-// simulation.addObject(testObject.clone().moveBy(0, 2000000).setVelocity(0, -5000))
+simulation.addObject(testObject);
+simulation.addObject(testObject.clone().moveBy(0, 2000000).setVelocity(0, -5000))
 
 simulation.center.y = projectile.position.y;
 simulation.zoom = 0.00009380341682666084;
