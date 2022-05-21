@@ -54,7 +54,7 @@ class Rectangle {
 }
 
 class Energy {
-  constructor () {
+  constructor() {
     /** @type {number} Kinetic energy in joules */
     this.kinetic = 0;
 
@@ -65,6 +65,28 @@ class Energy {
   /** @returns {number} Total energy in joules */
   total() {
     return this.kinetic + this.gravitational;
+  }
+}
+
+class TrailLocation {
+  constructor(x, y, timestamp) {
+    this.x = x;
+    this.y = y;
+    this.timestamp = timestamp;
+  }
+}
+
+class Trail {
+  constructor() {
+    /** @type {TrailLocation[]} */
+    this.points = [];
+  }
+
+  add(point) {
+    this.points.push(point);
+    if (this.points.length > 100) {
+      this.points.shift();
+    }
   }
 }
 
@@ -87,6 +109,9 @@ class PointMass {
 
     /** @type {color} color of the point */
     this.color = 'white';
+
+    /** @type {Trail} Previous positions of the point */
+    this.trail = new Trail();
   }
 
   setMass(mass) {
@@ -168,6 +193,11 @@ class PointMass {
     return this.mass * this.velocity.magnitude();
   }
 
+  getArea () {
+    // Area of circle = pi * r^2
+    return Math.PI * (this.radius ** 2);
+  }
+
   getBounds () {
     return new Rectangle(
       this.position.x - this.radius,
@@ -195,6 +225,7 @@ class Simulation {
     /** @param {number} In seconds */
     this.timeStep = 1 / this.updatesPerSecond;
 
+    this.showTrails = true;
     this.showVelocity = false;
     this.showAcceleration = false;
 
@@ -233,6 +264,8 @@ class Simulation {
 
     /** @type {PointMass[]} */
     this.objects = [];
+
+    this.timestamp = 0;
   }
 
   updateCanvasSize() {
@@ -297,6 +330,10 @@ class Simulation {
     );
   }
 
+  calculateZoomIndependentPixels(domPixels) {
+    return domPixels / this.zoom;
+  }
+
   addObject(object) {
     if (this.objects.includes(object)) {
       throw new Error('Object already in simulation');
@@ -315,6 +352,8 @@ class Simulation {
       }
     }
 
+    this.updateTrails();
+
     this.render();
 
     // const totalEnergy = new Energy();
@@ -330,6 +369,8 @@ class Simulation {
   }
 
   updateObjects() {
+    this.timestamp += this.timeStep;
+
     if (this.objects.length === 0) {
       // Nothing to do.
       return;
@@ -392,6 +433,15 @@ class Simulation {
     this.dirty = true;
   }
 
+  updateTrails() {
+    if (this.running) {
+      for (let i = 0; i < this.objects.length; i++) {
+        const object = this.objects[i];
+        object.trail.add(new TrailLocation(object.position.x, object.position.y, this.timestamp));
+      }
+    }
+  }
+
   render() {
     // Save power when not visible
     if (document.hidden) {
@@ -424,37 +474,50 @@ class Simulation {
 
     const viewport = this.getSimulationViewport();
 
-    for (const object of this.objects) {
-      // Don't waste time trying to render objects that are completely offscreen
-      if (!object.getBounds().intersects(viewport)) {
-        continue;
-      }
+    this.ctx.lineWidth = this.calculateZoomIndependentPixels(3);
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
 
+    for (const object of this.objects) {
       this.ctx.save();
 
-      this.ctx.translate(object.position.x, object.position.y);
+      const x = object.position.x;
+      const y = object.position.y;
 
-      this.ctx.fillStyle = object.color;
-      this.ctx.beginPath();
-      this.ctx.arc(0, 0, object.radius, 0, 2 * Math.PI);
-      this.ctx.fill();
+      if (object.getBounds().intersects(viewport)) {
+        this.ctx.fillStyle = object.color;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, object.radius, 0, 2 * Math.PI);
+        this.ctx.fill();
+      }
 
-      // TODO: these need separate culling checks
+      if (this.showTrails) {
+        const points = object.trail.points;
+        if (points.length > 0) {
+          this.ctx.beginPath();
+          this.ctx.strokeStyle = 'rgb(127, 127, 127)';
+          this.ctx.moveTo(points[0].x, points[0].y);
+          for (let p = 1; p < points.length; p++) {
+            const point = points[p];
+            this.ctx.lineTo(point.x, point.y);
+          }
+          this.ctx.stroke();
+        }
+      }
+
       if (this.showVelocity) {
         this.ctx.beginPath();
-        this.ctx.strokeStyle = 'blue';
-        this.ctx.lineWidth = object.radius / 3;
-        this.ctx.moveTo(0, 0);
-        this.ctx.lineTo(object.velocity.x * 1000, object.velocity.y * 1000);
+        this.ctx.strokeStyle = 'rgb(0, 0, 255)';
+        this.ctx.moveTo(x, y);
+        this.ctx.lineTo(x + object.velocity.x * 1000, y + object.velocity.y * 1000);
         this.ctx.stroke();
       }
 
       if (this.showAcceleration) {
         this.ctx.beginPath();
-        this.ctx.strokeStyle = 'red';
-        this.ctx.lineWidth = object.radius / 3;
-        this.ctx.moveTo(0, 0);
-        this.ctx.lineTo(object.netForce.x / object.mass * 2500000, object.netForce.y / object.mass * 2500000);
+        this.ctx.strokeStyle = 'rgb(255, 0, 0)';
+        this.ctx.moveTo(x, y);
+        this.ctx.lineTo(x + object.netForce.x / object.mass * 2000000, y + object.netForce.y / object.mass * 2000000);
         this.ctx.stroke();
       }
 
@@ -551,14 +614,14 @@ const projectile = new PointMass()
   .setVelocity(1000, 0);
 simulation.addObject(projectile);
 
-const testObject = new PointMass()
-  .setMass(4446150000)
-  .setRadius(700000)
-  .setPosition(0, earth.radius + 20000000)
-  .setVelocity(3500, 0);
+// const testObject = new PointMass()
+//   .setMass(4446150000)
+//   .setRadius(700000)
+//   .setPosition(0, earth.radius + 20000000)
+//   .setVelocity(3500, 0);
 
-simulation.addObject(testObject);
-simulation.addObject(testObject.clone().moveBy(0, 2000000).setVelocity(0, -5000))
+// simulation.addObject(testObject);
+// simulation.addObject(testObject.clone().moveBy(0, 2000000).setVelocity(0, -5000))
 
 simulation.center.y = projectile.position.y;
 simulation.zoom = 0.00009380341682666084;

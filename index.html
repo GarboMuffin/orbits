@@ -151,12 +151,17 @@
       <label class="option">
         <input type="checkbox" x-model="simulation.showVelocity">
         <span>Show Velocity</span>
-        <div class="colored-ball" style="background: blue;"></div>
+        <div class="colored-ball" style="background: rgb(0, 0, 255);"></div>
       </label>
       <label class="option">
         <input type="checkbox" x-model="simulation.showAcceleration">
         <span>Show Acceleration</span>
-        <div class="colored-ball" style="background: red;"></div>
+        <div class="colored-ball" style="background: rgb(255, 0, 0);"></div>
+      </label>
+      <label class="option">
+        <input type="checkbox" x-model="simulation.showTrails">
+        <span>Show Trails</span>
+        <div class="colored-ball" style="background: rgb(127, 127, 127);"></div>
       </label>
     </div>
     <script src="alpine.js"></script>
