@@ -542,17 +542,23 @@ class Simulation {
   }
 
   getSpeedRelativeToRealtime() {
+    // 1.0 means "realtime"
+    // 2.0 means "twice as fast as realtime"
+    // 0.0 means "not moving"
+    // -1.0 means "realtime, but backwards"
+    // 2.0 means "twice as fast as realtime, but backwards"
     return this.updatesPerSecond * this.timeStep;
   }
 
   setExponentialSpeed(exponentialSpeed) {
-    const speedRelativeToRealtime = 1.5 ** exponentialSpeed;
+    const speedRelativeToRealtime = 1.5 ** Math.abs(exponentialSpeed);
     if (speedRelativeToRealtime > 1000) {
       this.timeStep = 0.1;
     } else {
       this.timeStep = 0.02;
     }
-    this.updatesPerSecond = speedRelativeToRealtime / this.timeStep;
+    this.timeStep *= Math.sign(exponentialSpeed);
+    this.updatesPerSecond = Math.abs(speedRelativeToRealtime / this.timeStep);
   }
 
   startAnimationFrameLoop() {
