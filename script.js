@@ -393,6 +393,7 @@ class Simulation {
 
         const nonCollidingDistance = objectA.radius + objectB.radius;
         if (distance < nonCollidingDistance) {
+          const penetration = nonCollidingDistance - distance;
           const angle = Math.atan2(-dy, -dx);
 
           // This applies a large force to objects that are inside each other to make them stop touching.
@@ -400,7 +401,7 @@ class Simulation {
           // This is an inaccurate approximation of actual collisions.
 
           const lesserMass = Math.min(objectA.mass, objectB.mass);
-          const acceleration = 5000; // m/s/s
+          const acceleration = 1 * penetration; // m/s/s
           // Force = Mass * Acceleration
           const force = lesserMass * acceleration;
 
@@ -509,6 +510,7 @@ class Simulation {
             this.ctx.lineTo(point.x, point.y);
           }
           this.ctx.stroke();
+          this.ctx.globalAlpha = 1;
         }
       }
 
@@ -566,7 +568,7 @@ class Simulation {
     } else {
       this.timeStep = 0.02;
     }
-    this.timeStep *= Math.sign(exponentialSpeed);
+    this.timeStep *= Math.sign(exponentialSpeed) || 1;
     this.updatesPerSecond = Math.abs(speedRelativeToRealtime / this.timeStep);
   }
 
