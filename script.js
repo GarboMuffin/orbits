@@ -120,6 +120,9 @@ class PointMass {
 
     /** @type {Trail} Previous positions of the point */
     this.trail = new Trail();
+
+    /** @type {boolean} true if the object is "locked" and can not be moved */
+    this.locked = false;
   }
 
   setMass(mass) {
@@ -211,6 +214,47 @@ class PointMass {
   }
 }
 
+const MAX_ENTRIES = 5;
+const MINIMUM_ENTRIES = 3;
+
+class Fling {
+  constructor () {
+    this.history = [];
+    this.lastUpdate = 0;
+  }
+
+  update(movementX, movementY) {
+    this.history.push({
+      x: movementX,
+      y: movementY
+    });
+    if (this.history.length > MAX_ENTRIES) {
+      this.history.shift();
+    }
+    this.lastUpdate = performance.now();
+  }
+
+  calculateVelocity() {
+    let averageX = 0;
+    let averageY = 0;
+
+    const timeSinceUpdate = performance.now() - this.lastUpdate;
+    if (this.history.length > MINIMUM_ENTRIES && timeSinceUpdate < 100) {
+      let sumX = 0;
+      let sumY = 0;
+        for (const {x, y} of this.history) {
+        sumX += x;
+        sumY += y;
+      }
+      averageX = sumX / this.history.length;
+      averageY = sumY / this.history.length;  
+    }
+
+    const SCALE_BY = 5000;
+    return new Vector(averageX * SCALE_BY, averageY * SCALE_BY);
+  }
+}
+
 class Simulation {
   constructor() {
     /** @type {HTMLCanvasElement} */
@@ -239,23 +283,46 @@ class Simulation {
 
     this.center = new Vector();
     this.zoom = 0.000006339726086728971;
+
     this.canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
+
+      const objectAtPoint = this.getObjectAtPoint(this.getSimulationPointAtScreenPoint(e.clientX, e.clientY));
+      const fling = new Fling();
+
+      const isMovingObject = !!objectAtPoint;
+      const isMovingViewport = !isMovingObject;
+
+      if (isMovingObject) {
+        objectAtPoint.locked = true;
+      }
+
       const mouseup = (e) => {
         e.preventDefault();
         window.removeEventListener('mouseup', mouseup);
         window.removeEventListener('mousemove', mousemove);
+        if (isMovingObject) {
+          const finalVelocity = fling.calculateVelocity();
+          objectAtPoint.velocity = finalVelocity;
+          objectAtPoint.locked = false;
+        }
       };
+
       const mousemove = (e) => {
         e.preventDefault();
-        this.panBy(e.movementX, e.movementY);
+        fling.update(e.movementX, e.movementY);
+        if (isMovingViewport) {
+          this.panBy(e.movementX, e.movementY);
+        }
+        if (isMovingObject) {
+          this.moveObjectBy(objectAtPoint, e.movementX, e.movementY);
+        }
       };
+
       window.addEventListener('mouseup', mouseup);
       window.addEventListener('mousemove', mousemove);
     });
-    // document.addEventListener('mousemove', (e) => {
-    //   console.log(this.getSimulationPointAtScreenPoint(e.clientX, e.clientY))
-    // });
+
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       this.zoomBy(e.deltaY, e.clientX, e.clientY);
@@ -320,6 +387,23 @@ class Simulation {
     );
   }
 
+  getObjectAtPoint(position) {
+    for (const object of this.objects) {
+      const distance = object.position.distanceTo(position);
+      if (distance < object.radius) {
+        return object;
+      }
+    }
+    return null;
+  }
+
+  moveObjectBy(object, screenMovementX, screenMovementY) {
+    const simulationMovementX = screenMovementX / this.zoom;
+    const simulationMovementY = screenMovementY / this.zoom;
+    object.position.x += simulationMovementX;
+    object.position.y += simulationMovementY;
+  }
+
   getSimulationViewport() {
     const viewportWidth = this.baseWidth / this.zoom;
     const viewportHeight = this.baseHeight / this.zoom;
@@ -350,6 +434,7 @@ class Simulation {
       // step so that if we get another "7.5 steps", we'll do 7 + 8 = 15 steps instead of 7 + 7 = 14 steps.
       const stepsToPerform = deltaTimeSeconds * this.updatesPerSecond + this.updateRollover;
       this.updateRollover = stepsToPerform % 1;
+      this.updateCaches();
       for (let i = 0; i < Math.floor(stepsToPerform); i++) {
         this.updateObjects();
       }
@@ -371,10 +456,14 @@ class Simulation {
     // console.log(totalEnergy.total(), totalMomentum);
   }
 
+  updateCaches() {
+    this.unlockedObjects = this.objects.filter(i => !i.locked);
+  }
+
   updateObjects() {
     this.timestamp += this.timeStep;
 
-    const objects = this.objects;
+    const objects = this.unlockedObjects;
 
     if (objects.length === 0) {
       // Nothing to do.
