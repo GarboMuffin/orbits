@@ -214,41 +214,38 @@ class PointMass {
   }
 }
 
-const MAX_ENTRIES = 5;
-const MINIMUM_ENTRIES = 3;
-
 class Fling {
   constructor () {
     this.history = [];
-    this.lastUpdate = 0;
+  }
+
+  now() {
+    return performance.now();
+  }
+
+  minimumTimeThreshold() {
+    return this.now() - 75;
   }
 
   update(movementX, movementY) {
     this.history.push({
       x: movementX,
-      y: movementY
+      y: movementY,
+      time: this.now()
     });
-    if (this.history.length > MAX_ENTRIES) {
-      this.history.shift();
-    }
-    this.lastUpdate = performance.now();
   }
 
   calculateVelocity() {
-    let averageX = 0;
-    let averageY = 0;
-
-    const timeSinceUpdate = performance.now() - this.lastUpdate;
-    if (this.history.length > MINIMUM_ENTRIES && timeSinceUpdate < 100) {
-      let sumX = 0;
-      let sumY = 0;
-        for (const {x, y} of this.history) {
-        sumX += x;
-        sumY += y;
-      }
-      averageX = sumX / this.history.length;
-      averageY = sumY / this.history.length;  
+    const minimumTime = this.minimumTimeThreshold();
+    const relevantHistory = this.history.filter(i => i.time >= minimumTime);
+    let sumX = 0;
+    let sumY = 0;
+    for (const {x, y} of relevantHistory) {
+      sumX += x;
+      sumY += y;
     }
+    const averageX = (sumX / relevantHistory.length) || 0;
+    const averageY = (sumY / relevantHistory.length) || 0;
 
     const SCALE_BY = 5000;
     return new Vector(averageX * SCALE_BY, averageY * SCALE_BY);
