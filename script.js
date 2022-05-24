@@ -273,8 +273,11 @@ class Simulation {
     this.timeStep = 1 / this.updatesPerSecond;
 
     this.showTrails = false;
+    this.markAsDirtyWhenPropertyChanges('showTrails');
     this.showVelocity = false;
+    this.markAsDirtyWhenPropertyChanges('showVelocity');
     this.showAcceleration = false;
+    this.markAsDirtyWhenPropertyChanges('showAcceleration');
 
     window.addEventListener('resize', () => {
       this.updateCanvasSize();
@@ -351,6 +354,19 @@ class Simulation {
     this.objects = [];
 
     this.timestamp = 0;
+  }
+
+  markAsDirtyWhenPropertyChanges(property) {
+    let actualValue = this[property];
+    Object.defineProperty(this, property, {
+      get: () => {
+        return actualValue;
+      },
+      set: (newValue) => {
+        this.dirty = true;
+        actualValue = newValue;
+      }
+    });
   }
 
   updateCanvasSize() {
