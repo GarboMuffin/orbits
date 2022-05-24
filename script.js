@@ -284,10 +284,14 @@ class Simulation {
     this.center = new Vector();
     this.zoom = 0.000006339726086728971;
 
+    this.interacting = false;
+
     this.canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
 
-      const objectAtPoint = this.getObjectAtPoint(this.getSimulationPointAtScreenPoint(e.clientX, e.clientY));
+      this.interacting = true;
+
+      const objectAtPoint = this.getObjectAtScreenPoint(e.clientX, e.clientY);
       const fling = new Fling();
 
       const isMovingObject = !!objectAtPoint;
@@ -299,8 +303,12 @@ class Simulation {
 
       const mouseup = (e) => {
         e.preventDefault();
+
         window.removeEventListener('mouseup', mouseup);
         window.removeEventListener('mousemove', mousemove);
+
+        this.interacting = false;
+
         if (isMovingObject) {
           const finalVelocity = fling.calculateVelocity();
           objectAtPoint.velocity = finalVelocity;
@@ -321,6 +329,13 @@ class Simulation {
 
       window.addEventListener('mouseup', mouseup);
       window.addEventListener('mousemove', mousemove);
+    });
+
+    this.mouseClientX = 0;
+    this.mouseClientY = 0;
+    this.canvas.addEventListener('mousemove', (e) => {
+      this.mouseClientX = e.clientX;
+      this.mouseClientY = e.clientY;
     });
 
     this.canvas.addEventListener('wheel', (e) => {
@@ -397,11 +412,16 @@ class Simulation {
     return null;
   }
 
+  getObjectAtScreenPoint(clientX, clientY) {
+    return this.getObjectAtPoint(this.getSimulationPointAtScreenPoint(clientX, clientY));
+  }
+
   moveObjectBy(object, screenMovementX, screenMovementY) {
     const simulationMovementX = screenMovementX / this.zoom;
     const simulationMovementY = screenMovementY / this.zoom;
     object.position.x += simulationMovementX;
     object.position.y += simulationMovementY;
+    this.dirty = true;
   }
 
   getSimulationViewport() {
@@ -442,6 +462,7 @@ class Simulation {
 
     this.updateTrails();
 
+    this.renderCursor();
     this.render();
 
     // const totalEnergy = new Energy();
@@ -540,6 +561,19 @@ class Simulation {
       for (let i = 0; i < this.objects.length; i++) {
         const object = this.objects[i];
         object.trail.add(new TrailLocation(object.position.x, object.position.y, this.timestamp));
+      }
+    }
+  }
+
+  renderCursor() {
+    if (this.interacting) {
+      this.canvas.style.cursor = 'grabbing';
+    } else {
+      const hoveringObject = this.getObjectAtScreenPoint  (this.mouseClientX, this.mouseClientY);
+      if (hoveringObject) {
+        this.canvas.style.cursor = 'grab';
+      } else {
+        this.canvas.style.cursor = '';
       }
     }
   }
@@ -698,10 +732,15 @@ const params = new URLSearchParams(location.search);
 
 const earth = new PointMass()
   .setMass(5.972e24)
-  .setRadius(6.371e6)
+  .setRadius(6371000)
   .setColor('rgba(50, 255, 50)');
 simulation.addObject(earth);
 
+// const object = new PointMass()
+//   .setMass(1)
+//   .setRadius(1)
+//   .setPosition(0, -earth.radius - 20);
+// simulation.addObject(object)
 const moon = new PointMass()
   .setMass(7.34767309e22)
   .setRadius(1737400)
