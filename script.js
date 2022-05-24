@@ -123,6 +123,9 @@ class PointMass {
 
     /** @type {boolean} true if the object is "locked" and can not be moved */
     this.locked = false;
+
+    /** @type {string} User-facing name of object. */
+    this.name = 'Object';
   }
 
   setMass(mass) {
@@ -156,13 +159,19 @@ class PointMass {
     return this;
   }
 
+  setName(name) {
+    this.name = name;
+    return this;
+  }
+
   clone() {
     return new PointMass()
       .setMass(this.mass)
       .setRadius(this.radius)
       .setPosition(this.position.x, this.position.y)
       .setVelocity(this.velocity.x, this.velocity.y)
-      .setColor(this.color);
+      .setColor(this.color)
+      .setName(this.name);
   }
 
   /** @param {number} timeStep Time step, in seconds */
@@ -217,6 +226,7 @@ class PointMass {
 class Fling {
   constructor () {
     this.history = [];
+    this.period = 0.075;
   }
 
   now() {
@@ -224,7 +234,7 @@ class Fling {
   }
 
   minimumTimeThreshold() {
-    return this.now() - 75;
+    return this.now() - (this.period * 1000);
   }
 
   update(movementX, movementY) {
@@ -235,20 +245,69 @@ class Fling {
     });
   }
 
-  calculateVelocity() {
+  calculateVelocity(zoom) {
+    const now = this.now();
     const minimumTime = this.minimumTimeThreshold();
     const relevantHistory = this.history.filter(i => i.time >= minimumTime);
+
+    if (relevantHistory.length === 0) {
+      return new Vector(0, 0);
+    }
+
     let sumX = 0;
     let sumY = 0;
     for (const {x, y} of relevantHistory) {
       sumX += x;
       sumY += y;
     }
-    const averageX = (sumX / relevantHistory.length) || 0;
-    const averageY = (sumY / relevantHistory.length) || 0;
 
-    const SCALE_BY = 5000;
-    return new Vector(averageX * SCALE_BY, averageY * SCALE_BY);
+    const oldestTime = relevantHistory[0].time;
+    const realPeriod = (now - oldestTime);
+
+    const averageScreenX = (sumX / realPeriod) || 0;
+    const averageScreenY = (sumY / realPeriod) || 0;
+
+    const simulationXPerSecond = averageScreenX / zoom;
+    const simulationYPerSecond = averageScreenY / zoom;
+
+    return new Vector(simulationXPerSecond, simulationYPerSecond);
+  }
+}
+
+const statusMessages = document.createElement('div');
+statusMessages.style.display = 'flex';
+statusMessages.style.alignItems = 'center';
+statusMessages.style.justifyContent = 'center';
+statusMessages.style.flexDirection = 'column';
+statusMessages.style.position = 'absolute';
+statusMessages.style.top = '20px';
+statusMessages.style.left = '0';
+statusMessages.style.width = '100%';
+statusMessages.style.zIndex = '100';
+statusMessages.style.pointerEvents = 'none';
+document.body.appendChild(statusMessages);
+
+class StatusMessage {
+  constructor(text) {
+    this.el = document.createElement('div')
+    this.el.textContent = text;
+    this.el.style.background = 'rgba(0, 0, 0, 0.8)';
+    this.el.style.border = '1px solid rgba(255, 255, 255, 0.5)';
+    this.el.style.color = 'white';
+    this.el.style.padding = '8px';
+    this.el.style.borderRadius = '8px';
+    this.el.style.transition = '.2s';
+  }
+
+  flash() {
+    statusMessages.prepend(this.el);
+    getComputedStyle(this.el).opacity;
+    setTimeout(() => {
+      this.el.style.opacity = '0';
+      setTimeout(() => {
+        this.el.remove();
+      }, 200);
+    }, 500);
   }
 }
 
@@ -290,6 +349,7 @@ class Simulation {
 
     this.canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
+      document.activeElement.blur();
 
       const objectAtPoint = this.getObjectAtScreenPoint(e.clientX, e.clientY);
       const fling = new Fling();
@@ -302,6 +362,7 @@ class Simulation {
 
       if (isMovingObject) {
         objectAtPoint.locked = true;
+        this.dirty = true;
       }
 
       const mouseup = (e) => {
@@ -313,9 +374,10 @@ class Simulation {
         this.interacting = false;
 
         if (isMovingObject) {
-          const finalVelocity = fling.calculateVelocity();
-          objectAtPoint.velocity = finalVelocity;
+          objectAtPoint.velocity = fling.calculateVelocity(this.zoom);
+          objectAtPoint.netForce = new Vector();
           objectAtPoint.locked = false;
+          this.dirty = true;
         }
       };
 
@@ -350,7 +412,7 @@ class Simulation {
       e.preventDefault();
     });
 
-    window.addEventListener('keydown', (e) => {
+    window.addEventListener('keypress', (e) => {
       const activeObject = this.interactingObject || this.getObjectAtScreenPoint(this.mouseClientX, this.mouseClientY);
       if (activeObject) {
         if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -369,7 +431,11 @@ class Simulation {
         if (newObject) {
           newObject.position = this.getSimulationPointAtScreenPoint(this.mouseClientX, this.mouseClientY);
           newObject.setVelocity(0, 0);
-          this.addObject(newObject);
+          if (this.isSafeToSpawnObject(newObject)) {
+            this.addObject(newObject);
+          } else {
+            new StatusMessage(`${newObject.name} won't fit`).flash();
+          }
         }
       }
     });
@@ -454,6 +520,16 @@ class Simulation {
 
   getObjectAtScreenPoint(clientX, clientY) {
     return this.getObjectAtPoint(this.getSimulationPointAtScreenPoint(clientX, clientY));
+  }
+
+  isSafeToSpawnObject(newObject) {
+    for (const object of this.objects) {
+      const distance = object.position.distanceTo(newObject.position);
+      if (distance <= object.radius + newObject.radius) {
+        return false;
+      }
+    }
+    return true;
   }
 
   moveObjectBy(object, screenMovementX, screenMovementY) {
@@ -701,7 +777,7 @@ class Simulation {
         }
       }
 
-      if (this.showVelocity) {
+      if (this.showVelocity && !object.locked) {
         this.ctx.beginPath();
         this.ctx.strokeStyle = 'rgb(0, 0, 255)';
         this.ctx.moveTo(x, y);
@@ -709,7 +785,7 @@ class Simulation {
         this.ctx.stroke();
       }
 
-      if (this.showAcceleration) {
+      if (this.showAcceleration && !object.locked) {
         this.ctx.beginPath();
         this.ctx.strokeStyle = 'rgb(255, 0, 0)';
         this.ctx.moveTo(x, y);
@@ -789,6 +865,7 @@ const simulation = new Simulation();
 const params = new URLSearchParams(location.search);
 
 const earth = new PointMass()
+  .setName('Earth')
   .setMass(5.972e24)
   .setRadius(6371000)
   .setColor('rgba(50, 255, 50)');
@@ -800,6 +877,7 @@ simulation.addObject(earth);
 //   .setPosition(0, -earth.radius - 20);
 // simulation.addObject(object)
 const moon = new PointMass()
+  .setName('Moon')
   .setMass(7.34767309e22)
   .setRadius(1737400)
   .setPosition(0, earth.radius + 378000000)
@@ -807,6 +885,7 @@ const moon = new PointMass()
 simulation.addObject(moon);
 
 const iss = new PointMass()
+  .setName('ISS')
   .setMass(444615000)
   .setRadius(70000)
   .setPosition(0, earth.radius + 413000)
@@ -815,6 +894,7 @@ const iss = new PointMass()
 simulation.addObject(iss);
 
 const projectile = new PointMass()
+  .setName('Projectile')
   .setMass(100)
   .setRadius(30000)
   .setPosition(0, -iss.position.y)
@@ -822,6 +902,7 @@ const projectile = new PointMass()
 simulation.addObject(projectile);
 
 const testObject = new PointMass()
+  .setName('Big Rock')
   .setMass(4446150000)
   .setRadius(700000)
   .setPosition(0, earth.radius + 22000000)
