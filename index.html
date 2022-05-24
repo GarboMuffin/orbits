@@ -115,6 +115,7 @@
         <button
           @click="simulation.toggleRunning()"
           style="width: 100%;"
+          class="pause-button"
         >
           <div x-show="simulation.running">Pause</div>
           <div x-show="!simulation.running">Resume</div>
@@ -167,6 +168,12 @@
     <script src="alpine.js"></script>
     <script>
       document.getElementById('interface').hidden = false;
+      const pauseButton = document.querySelector('.pause-button');
+      document.addEventListener('keydown', (e) => {
+        if (e.key === ' ' && e.target === document.body) {
+          pauseButton.click();
+        }
+      })
     </script>
   </body>
 </html>
