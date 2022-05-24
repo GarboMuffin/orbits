@@ -285,14 +285,17 @@ class Simulation {
     this.zoom = 0.000006339726086728971;
 
     this.interacting = false;
+    /** @type {PointMass|null} */
+    this.interactingObject = null;
 
     this.canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
 
-      this.interacting = true;
-
       const objectAtPoint = this.getObjectAtScreenPoint(e.clientX, e.clientY);
       const fling = new Fling();
+
+      this.interacting = true;
+      this.interactingObject = objectAtPoint;
 
       const isMovingObject = !!objectAtPoint;
       const isMovingViewport = !isMovingObject;
@@ -345,6 +348,30 @@ class Simulation {
 
     this.canvas.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      const activeObject = this.interactingObject || this.getObjectAtScreenPoint(this.mouseClientX, this.mouseClientY);
+      if (activeObject) {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          this.removeObject(activeObject);
+        }
+      } else {
+        let newObject;
+        if (e.key === '1') {
+          newObject = testObject.clone();
+          newObject.setColor(randomColor());
+        } else if (e.key === '2') {
+          newObject = earth.clone();
+        } else if (e.key === '3') {
+          newObject = moon.clone();
+        }
+        if (newObject) {
+          newObject.position = this.getSimulationPointAtScreenPoint(this.mouseClientX, this.mouseClientY);
+          newObject.setVelocity(0, 0);
+          this.addObject(newObject);
+        }
+      }
     });
 
     /** @type {PointMass[]} */
@@ -459,6 +486,12 @@ class Simulation {
       throw new Error('Object already in simulation');
     }
     this.objects.push(object);
+    this.dirty = true;
+  }
+
+  removeObject(object) {
+    this.objects = this.objects.filter(i => i !== object);
+    this.dirty = true;
   }
 
   next(deltaTimeSeconds) {
@@ -627,17 +660,29 @@ class Simulation {
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
 
-    for (const object of this.objects) {
+    const sortedObjects = this.objects.slice().sort((a, b) => {
+      if (a.locked && !b.locked) return 1;
+      if (b.locked && !a.locked) return -1;
+      return 0;
+    });
+
+    for (const object of sortedObjects) {
       this.ctx.save();
 
       const x = object.position.x;
       const y = object.position.y;
 
       if (object.getBounds().intersects(viewport)) {
+        if (object.locked) {
+          this.ctx.globalAlpha = 0.7;
+        }
         this.ctx.fillStyle = object.color;
         this.ctx.beginPath();
         this.ctx.arc(x, y, object.radius, 0, 2 * Math.PI);
         this.ctx.fill();
+        if (object.locked) {
+          this.ctx.globalAlpha = 1;
+        }
       }
 
       if (this.showTrails) {
@@ -782,8 +827,8 @@ const testObject = new PointMass()
   .setPosition(0, earth.radius + 22000000)
   .setVelocity(3500, 0);
 
-for (let x = -4; x < 4; x++) {
-  for (let y = -4; y < 4; y++) {
+for (let x = -3; x < 3; x++) {
+  for (let y = -3; y < 3; y++) {
     const object = testObject
       .clone()
       .setColor(randomColor())
