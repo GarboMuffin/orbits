@@ -5,6 +5,8 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const randomColor = () => `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
 
+const MAX_TRAILS = 100; // frames
+
 class Vector {
   constructor(x=0, y=0) {
     this.x = x;
@@ -21,6 +23,10 @@ class Vector {
 
   magnitude() {
     return Math.sqrt(this.x ** 2 + this.y ** 2);
+  }
+
+  clone() {
+    return new Vector(this.x, this.y);
   }
 }
 
@@ -86,7 +92,7 @@ class Trail {
 
   add(point) {
     this.points.push(point);
-    if (this.points.length > 100) {
+    if (this.points.length > MAX_TRAILS) {
       this.points.shift();
     }
   }
@@ -415,7 +421,7 @@ class Simulation {
           objectB.netForce.y -= springY;
         }
 
-        // Universal gravitational field strength
+        // Universal gravitation
         // Fg = G * m1 * m2 / r^2
         const gravityMagnitude = G * objectA.mass * objectB.mass / (distance ** 2);
 
@@ -646,8 +652,8 @@ for (let x = -4; x < 4; x++) {
   }
 }
 
-simulation.center.y = testObject.position.y;
-simulation.zoom = 0.00000580341682666084;
+// simulation.center.y = testObject.position.y;
+simulation.zoom = 0.00000680341682666084;
 
 simulation.render();
 simulation.startAnimationFrameLoop();
