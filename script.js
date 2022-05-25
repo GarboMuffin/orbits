@@ -295,6 +295,7 @@ class StatusMessage {
     this.el.style.border = '1px solid rgba(255, 255, 255, 0.5)';
     this.el.style.color = 'white';
     this.el.style.padding = '8px';
+    this.el.style.marginBottom = '8px';
     this.el.style.borderRadius = '8px';
     this.el.style.transition = '.2s';
   }
@@ -412,30 +413,32 @@ class Simulation {
       e.preventDefault();
     });
 
-    window.addEventListener('keypress', (e) => {
+    window.addEventListener('keydown', (e) => {
       const activeObject = this.interactingObject || this.getObjectAtScreenPoint(this.mouseClientX, this.mouseClientY);
       if (activeObject) {
         if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
           this.removeObject(activeObject);
+          return;
         }
-      } else {
-        let newObject;
-        if (e.key === '1') {
-          newObject = testObject.clone();
-          newObject.setColor(randomColor());
-        } else if (e.key === '2') {
-          newObject = earth.clone();
-        } else if (e.key === '3') {
-          newObject = moon.clone();
-        }
-        if (newObject) {
-          newObject.position = this.getSimulationPointAtScreenPoint(this.mouseClientX, this.mouseClientY);
-          newObject.setVelocity(0, 0);
-          if (this.isSafeToSpawnObject(newObject)) {
-            this.addObject(newObject);
-          } else {
-            new StatusMessage(`${newObject.name} won't fit`).flash();
-          }
+      }
+
+      let newObject;
+      if (e.key === '1') {
+        newObject = testObject.clone();
+        newObject.setColor(randomColor());
+      } else if (e.key === '2') {
+        newObject = earth.clone();
+      } else if (e.key === '3') {
+        newObject = moon.clone();
+      }
+      if (newObject) {
+        newObject.position = this.getSimulationPointAtScreenPoint(this.mouseClientX, this.mouseClientY);
+        newObject.setVelocity(0, 0);
+        if (this.isSafeToSpawnObject(newObject)) {
+          this.addObject(newObject);
+        } else {
+          new StatusMessage(`${newObject.name} won't fit`).flash();
         }
       }
     });

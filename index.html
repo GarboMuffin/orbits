@@ -6,6 +6,7 @@
       :root {
         font-family: sans-serif;
         color-scheme: dark;
+        overflow: hidden;
       }
       #canvas {
         position: absolute;
@@ -98,19 +99,6 @@
       }"
       x-bind:class="open ? '' : 'hidden'"
     >
-      <button
-        class="toggle-button"
-        style="
-          position: absolute;
-          right: -5px;
-          transform: translateX(100%);
-        "
-        @click="open = !open"
-      >
-        <div x-show="!open">&gt;&gt;</div>
-        <div x-show="open">&lt;&lt;</div>
-      </button>
-
       <div class="option">
         <button
           @click="simulation.toggleRunning()"
@@ -164,6 +152,20 @@
         <span>Show Trails</span>
         <div class="colored-ball" style="background: rgb(127, 127, 127);"></div>
       </label>
+
+      <button
+        class="toggle-button"
+        style="
+          position: absolute;
+          right: -5px;
+          top: 4px;
+          transform: translateX(100%);
+        "
+        @click="open = !open"
+      >
+        <div x-show="!open">&gt;&gt;</div>
+        <div x-show="open">&lt;&lt;</div>
+      </button>
     </div>
     <script src="alpine.js"></script>
     <script>
