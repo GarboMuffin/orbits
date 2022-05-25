@@ -174,7 +174,7 @@ class PointMass {
       .setName(this.name);
   }
 
-  /** @param {number} timeStep Time step, in seconds */
+  /** @param {number} timeStep How much time has passed, in seconds */
   updateKinematics(timeStep) {
     // Repeated addition of many small time slices approximates an integral
 
