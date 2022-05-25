@@ -5,7 +5,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const randomColor = () => `hsl(${Math.random() * 360}deg, ${Math.random() * 50 + 50}%, 50%)`;
 
-const MAX_TRAILS = 100; // frames
+const MAX_TRAILS = 150; // frames
 
 class Vector {
   constructor(x=0, y=0) {
@@ -485,9 +485,10 @@ class Simulation {
     const screenDistanceToTop = screenY - this.rect.top;
 
     const MIN_ZOOM = 0.000001;
+    const MAX_ZOOM = Infinity;
     const ZOOM_SPEED = 0.01;
     const zoomAmount = -deltaY * ZOOM_SPEED;
-    this.zoom = clamp(this.zoom * (2 ** zoomAmount), MIN_ZOOM, Infinity);
+    this.zoom = clamp(this.zoom * (2 ** zoomAmount), MIN_ZOOM, MAX_ZOOM);
 
     const newViewport = this.getSimulationViewport();
     const newSimulationLeftEdge = point.x - (screenDistanceToLeftEdge / this.zoom);
@@ -916,7 +917,7 @@ for (let x = -3; x < 3; x++) {
     const object = testObject
       .clone()
       .setColor(randomColor())
-      .moveBy(x * 4000000, y * 4000000)
+      .moveBy(x * 2500000, y * 2500000)
       .setVelocity(0, 0);
     simulation.addObject(object);
   }
