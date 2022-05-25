@@ -3,7 +3,7 @@ const G = 6.674e-11;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-const randomColor = () => `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
+const randomColor = () => `hsl(${Math.random() * 360}deg, ${Math.random() * 50 + 50}%, 50%)`;
 
 const MAX_TRAILS = 100; // frames
 
