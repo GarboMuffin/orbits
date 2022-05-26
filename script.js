@@ -637,13 +637,13 @@ class Simulation {
         // Avoid division by zero. Breaks math.
         if (distance === 0) continue;
 
-        const dx = objectB.position.x - objectA.position.x;
-        const dy = objectB.position.y - objectA.position.y;
+        const deltaX = objectB.position.x - objectA.position.x;
+        const deltaY = objectB.position.y - objectA.position.y;
 
         const nonCollidingDistance = objectA.radius + objectB.radius;
         if (distance < nonCollidingDistance) {
           const penetration = nonCollidingDistance - distance;
-          const angle = Math.atan2(-dy, -dx);
+          const angle = Math.atan2(-deltaY, -deltaX);
 
           // This applies a large force to objects that are inside each other to make them stop touching.
           // You can think of this as a spring force.
@@ -672,8 +672,8 @@ class Simulation {
         // 1) Hypotenuse = distance between points, legs = displacement between points
         // 2) Hypotenuse = force, legs = components of force
         // These equations were found using proportions
-        const gravityX = dx * gravityMagnitude / distance;
-        const gravityY = dy * gravityMagnitude / distance;
+        const gravityX = deltaX * gravityMagnitude / distance;
+        const gravityY = deltaY * gravityMagnitude / distance;
 
         // Newton's third law: equal and opposite forces
         objectA.netForce.x += gravityX;
