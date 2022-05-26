@@ -565,6 +565,11 @@ class Simulation {
     return domPixels / this.zoom;
   }
 
+  reset() {
+    this.objects.length = [];
+    this.dirty = true;
+  }
+
   addObject(object) {
     if (this.objects.includes(object)) {
       throw new Error('Object already in simulation');
@@ -846,6 +851,61 @@ class Simulation {
     this.updatesPerSecond = Math.abs(speedRelativeToRealtime / this.timeStep);
   }
 
+  loadPreset(name) {
+    this.reset();
+
+    if (name === 'earth') {
+      this.addObject(earth.clone());
+      this.addObject(moon.clone());
+      this.addObject(iss.clone());
+
+      this.center = earth.position.clone();
+      this.zoom = 0.00001908570414305176;
+    }
+
+    if (name === 'ball-matrix') {
+      this.addObject(earth.clone());
+
+      for (let x = -3; x < 3; x++) {
+        for (let y = -3; y < 3; y++) {
+          const object = testObject
+            .clone()
+            .setColor(randomColor())
+            .moveBy(x * 2500000, y * 2500000);
+          this.addObject(object);
+        }
+      }
+
+      this.center = earth.position.clone();
+      this.zoom = 0.00001908570414305176;
+    }
+
+    if (name === 'ball-orbit') {
+      this.addObject(earth.clone());
+
+      for (let y = 0; y < 20; y++) {
+        const object = testObject
+          .clone()
+          .setColor(randomColor())
+          .moveBy(0, y * 3500000)
+          .setVelocity(2500, 0);
+        this.addObject(object);
+      }
+
+      this.center = earth.position.clone();
+      this.zoom = 0.000009154115588243545;
+    }
+
+    if (name === 'collision') {
+      this.addObject(earth.clone());
+      this.addObject(iss.clone());
+      this.addObject(projectile.clone());
+
+      this.center = projectile.position.clone();
+      this.zoom = 0.00001908570414305176;
+    }
+  }
+
   startAnimationFrameLoop() {
     let focused = true;
     window.addEventListener('focus', () => {
@@ -880,7 +940,6 @@ const earth = new PointMass()
   .setMass(5.972e24)
   .setRadius(6371000)
   .setColor('rgba(50, 255, 50)');
-simulation.addObject(earth);
 
 // const object = new PointMass()
 //   .setMass(1)
@@ -893,7 +952,6 @@ const moon = new PointMass()
   .setRadius(1737400)
   .setPosition(0, earth.radius + 378000000)
   .setVelocity(1028.192, 0);
-simulation.addObject(moon);
 
 const iss = new PointMass()
   .setName('ISS')
@@ -902,7 +960,6 @@ const iss = new PointMass()
   .setPosition(0, earth.radius + 413000)
   .setVelocity(7660, 0)
   .setColor('rgba(127, 127, 255)');
-simulation.addObject(iss);
 
 const projectile = new PointMass()
   .setName('Projectile')
@@ -910,28 +967,15 @@ const projectile = new PointMass()
   .setRadius(30000)
   .setPosition(0, -iss.position.y)
   .setVelocity(1000, 0);
-simulation.addObject(projectile);
 
 const testObject = new PointMass()
   .setName('Big Rock')
   .setMass(4446150000)
   .setRadius(700000)
-  .setPosition(0, earth.radius + 22000000)
-  .setVelocity(3500, 0);
-
-for (let x = -3; x < 3; x++) {
-  for (let y = -3; y < 3; y++) {
-    const object = testObject
-      .clone()
-      .setColor(randomColor())
-      .moveBy(x * 2500000, y * 2500000)
-      .setVelocity(0, 0);
-    simulation.addObject(object);
-  }
-}
+  .setPosition(0, earth.radius + 2000000);
 
 // simulation.center.y = testObject.position.y;
-simulation.zoom = 0.00000680341682666084;
+// simulation.zoom = 0.00000680341682666084;
 
 simulation.render();
 simulation.startAnimationFrameLoop();

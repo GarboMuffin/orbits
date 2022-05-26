@@ -83,6 +83,10 @@
         border-radius: 100%;
         margin-left: 4px;
       }
+
+      select {
+        width: 100%;
+      }
     </style>
   </head>
 
@@ -152,6 +156,23 @@
         <span>Show Trails</span>
         <div class="colored-ball" style="background: rgb(127, 127, 127);"></div>
       </label>
+
+      <select
+        x-on:change="
+          simulation.loadPreset($el.value);
+          location.hash = $el.value;
+        "
+        x-init="
+          $el.value = location.hash.substr(1) || $el.value;
+          simulation.loadPreset($el.value);
+        "
+      >
+        <option value="none">None</option>
+        <option value="earth" selected>Earth</option>
+        <option value="ball-matrix">Ball Matrix</option>
+        <option value="ball-orbit">Orbiting Balls</option>
+        <option value="collision">Collision</option>
+      </select>
 
       <button
         class="toggle-button"
