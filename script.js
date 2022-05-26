@@ -126,6 +126,9 @@ class PointMass {
 
     /** @type {string} User-facing name of object. */
     this.name = 'Object';
+
+    /** @type {boolean} true if the object should not be user-interactable */
+    this.uninteractable = false;
   }
 
   setMass(mass) {
@@ -164,6 +167,11 @@ class PointMass {
     return this;
   }
 
+  setUninteractable(uninteractable) {
+    this.uninteractable = uninteractable;
+    return this;
+  }
+
   clone() {
     return new PointMass()
       .setMass(this.mass)
@@ -171,7 +179,8 @@ class PointMass {
       .setPosition(this.position.x, this.position.y)
       .setVelocity(this.velocity.x, this.velocity.y)
       .setColor(this.color)
-      .setName(this.name);
+      .setName(this.name)
+      .setUninteractable(this.uninteractable);
   }
 
   /** @param {number} timeStep How much time has passed, in seconds */
@@ -357,6 +366,9 @@ class Simulation {
       document.activeElement.blur();
 
       const objectAtPoint = this.getObjectAtScreenPoint(e.clientX, e.clientY);
+      if (objectAtPoint && objectAtPoint.uninteractable) {
+        return;
+      }
       const fling = new Fling();
 
       this.interacting = true;
@@ -435,6 +447,8 @@ class Simulation {
         newObject = earth.clone();
       } else if (e.key === '3') {
         newObject = moon.clone();
+      } else if (e.key === '4') {
+        newObject = smallProjectile.clone();
       }
       if (newObject) {
         newObject.position = this.getSimulationPointAtScreenPoint(this.mouseClientX, this.mouseClientY);
@@ -907,20 +921,11 @@ class Simulation {
     }
 
     if (name === 'projectile') {
-      this.addObject(
-        earth.clone().setMass(earth.mass * 0.005)
-      );
-
-      const obj = new PointMass()
-        .setColor('white')
-        .setMass(100)
-        .setRadius(500)
-        .setPosition(0, -earth.radius - 1000)
-        .setVelocity(2, -15);
-      this.addObject(obj);
+      this.addObject(earth.clone().setMass(earth.mass * 0.005).setUninteractable(true));
+      this.addObject(smallProjectile);
 
       this.zoom = 0.1;
-      this.center = obj.position.clone();
+      this.center = smallProjectile.position.clone();
     }
   }
 
@@ -992,8 +997,13 @@ const testObject = new PointMass()
   .setRadius(700000)
   .setPosition(0, earth.radius + 2000000);
 
-// simulation.center.y = testObject.position.y;
-// simulation.zoom = 0.00000680341682666084;
+const smallProjectile = new PointMass()
+  .setName('Small Projectile')
+  .setColor('white')
+  .setMass(100)
+  .setRadius(500)
+  .setPosition(0, -earth.radius - 1000)
+  .setVelocity(2, -15);
 
 simulation.render();
 simulation.startAnimationFrameLoop();
