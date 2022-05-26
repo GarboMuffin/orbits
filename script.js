@@ -200,7 +200,11 @@ class PointMass {
 
     for (const object of simulation.objects) {
       if (object === this) continue;
+
       const distance = this.position.distanceTo(object.position);
+      // Avoid division by zero. Breaks math.
+      if (distance === 0) continue;
+
       // Ug = -G * m1 * m2 / r
       energy.gravitational += G * this.mass * object.mass / distance;
     }
@@ -630,6 +634,9 @@ class Simulation {
         const objectB = objects[j];
 
         const distance = objectA.position.distanceTo(objectB.position);
+        // Avoid division by zero. Breaks math.
+        if (distance === 0) continue;
+
         const dx = objectB.position.x - objectA.position.x;
         const dy = objectB.position.y - objectA.position.y;
 
