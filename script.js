@@ -866,11 +866,12 @@ class Simulation {
     if (name === 'ball-matrix') {
       this.addObject(earth.clone());
 
-      for (let x = -3; x < 3; x++) {
-        for (let y = -3; y < 3; y++) {
+      for (let x = -3; x <= 3; x++) {
+        for (let y = -3; y <= 3; y++) {
           const object = testObject
             .clone()
             .setColor(randomColor())
+            .setPosition(0, 20000000)
             .moveBy(x * 2500000, y * 2500000);
           this.addObject(object);
         }
@@ -901,8 +902,25 @@ class Simulation {
       this.addObject(iss.clone());
       this.addObject(projectile.clone());
 
-      this.center = projectile.position.clone();
-      this.zoom = 0.00001908570414305176;
+      this.center = new Vector(earth.radius * 0.3, -earth.radius);
+      this.zoom = 0.0001197947197424044;
+    }
+
+    if (name === 'projectile') {
+      this.addObject(
+        earth.clone().setMass(earth.mass * 0.005)
+      );
+
+      const obj = new PointMass()
+        .setColor('white')
+        .setMass(100)
+        .setRadius(500)
+        .setPosition(0, -earth.radius - 1000)
+        .setVelocity(2, -15);
+      this.addObject(obj);
+
+      this.zoom = 0.1;
+      this.center = obj.position.clone();
     }
   }
 
